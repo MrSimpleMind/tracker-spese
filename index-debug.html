@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Tracker spese famiglia - Gestisci le spese di famiglia in modo semplice">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Spese">
+    <link rel="manifest" href="/tracker-spese/manifest.json">
+    <link rel="apple-touch-icon" href="/tracker-spese/icon-192.png">
+    <title>Tracker Spese Famiglia - DEBUG</title>
+    
+    <!-- ERUDA - Console visibile su schermo per debug iOS -->
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React e ReactDOM DEVONO essere caricati PRIMA -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js per i grafici -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif;
+            overscroll-behavior: none;
+        }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        
+        /* Debug info sempre visibile */
+        #debug-status {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #1e40af;
+            color: white;
+            padding: 10px;
+            font-size: 12px;
+            z-index: 9999;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Status bar debug -->
+    <div id="debug-status">🔍 DEBUG MODE - iOS Diagnostics</div>
+    
+    <div id="root" style="margin-top: 40px;"></div>
+    
+    <!-- Fallback se non carica -->
+    <noscript>
+        <div style="text-align: center; padding: 50px;">
+            <h1>⚠️ JavaScript richiesto</h1>
+            <p>Abilita JavaScript nel tuo browser per usare l'app</p>
+        </div>
+    </noscript>
+
+    <!-- Script di debug che traccia tutto -->
+    <script>
+        // Cattura tutti gli errori
+        window.addEventListener('error', function(e) {
+            console.error('❌ ERRORE GLOBALE:', e.error);
+            document.getElementById('debug-status').innerHTML = '❌ ERRORE: ' + e.message;
+            document.getElementById('debug-status').style.background = '#dc2626';
+        });
+        
+        // Log di caricamento librerie
+        console.log('📦 Inizio caricamento app...');
+        console.log('🌐 User Agent:', navigator.userAgent);
+        console.log('📱 Platform:', navigator.platform);
+        
+        // Controlla librerie base
+        setTimeout(() => {
+            console.log('✅ React disponibile:', typeof React !== 'undefined');
+            console.log('✅ ReactDOM disponibile:', typeof ReactDOM !== 'undefined');
+            console.log('✅ Firebase disponibile:', typeof firebase !== 'undefined');
+            console.log('✅ Babel disponibile:', typeof Babel !== 'undefined');
+        }, 1000);
+    </script>
+
+    <!-- Configurazione Firebase e PWA -->
+    <script type="text/babel" src="/tracker-spese/js/firebase-config.js" onerror="console.error('❌ Errore caricamento firebase-config.js')"></script>
+    
+    <!-- Componenti React -->
+    <script type="text/babel" src="/tracker-spese/js/components/LoginPage.js" onerror="console.error('❌ Errore caricamento LoginPage.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/components/SpeseView.js" onerror="console.error('❌ Errore caricamento SpeseView.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/components/CategorieView.js" onerror="console.error('❌ Errore caricamento CategorieView.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/components/ReminderView.js" onerror="console.error('❌ Errore caricamento ReminderView.js')"></script>
+    
+    <!-- Modali -->
+    <script type="text/babel" src="/tracker-spese/js/modals/AddSpesaModal.js" onerror="console.error('❌ Errore caricamento AddSpesaModal.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/modals/EditSpesaModal.js" onerror="console.error('❌ Errore caricamento EditSpesaModal.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/modals/GraficoAndamentoModal.js" onerror="console.error('❌ Errore caricamento GraficoAndamentoModal.js')"></script>
+    <script type="text/basel" src="/tracker-spese/js/modals/AddCategoriaModal.js" onerror="console.error('❌ Errore caricamento AddCategoriaModal.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/modals/EditCategoriaModal.js" onerror="console.error('❌ Errore caricamento EditCategoriaModal.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/modals/AddReminderModal.js" onerror="console.error('❌ Errore caricamento AddReminderModal.js')"></script>
+    <script type="text/babel" src="/tracker-spese/js/modals/EditReminderModal.js" onerror="console.error('❌ Errore caricamento EditReminderModal.js')"></script>
+    
+    <!-- App principale -->
+    <script type="text/babel" src="/tracker-spese/js/components/App.js" onerror="console.error('❌ Errore caricamento App.js')"></script>
+    
+    <!-- Inizializzazione App -->
+    <script type="text/babel">
+        console.log('🚀 Inizio inizializzazione React...');
+        
+        // Verifica che tutte le librerie siano caricate
+        setTimeout(() => {
+            console.log('⏰ Timeout 3 secondi - Verifica librerie');
+            
+            if (typeof React === 'undefined') {
+                console.error('❌ React non caricato!');
+                document.getElementById('debug-status').innerHTML = '❌ React non caricato';
+                document.getElementById('debug-status').style.background = '#dc2626';
+            }
+            
+            if (typeof ReactDOM === 'undefined') {
+                console.error('❌ ReactDOM non caricato!');
+                document.getElementById('debug-status').innerHTML = '❌ ReactDOM non caricato';
+                document.getElementById('debug-status').style.background = '#dc2626';
+            }
+            
+            if (typeof firebase === 'undefined') {
+                console.error('❌ Firebase non caricato!');
+                document.getElementById('debug-status').innerHTML = '❌ Firebase non caricato';
+                document.getElementById('debug-status').style.background = '#dc2626';
+            }
+            
+            if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof firebase === 'undefined') {
+                document.getElementById('root').innerHTML = `
+                    <div style="text-align: center; padding: 50px; font-family: system-ui;">
+                        <h1 style="color: #dc2626; font-size: 2rem;">❌ Errore di Caricamento</h1>
+                        <p style="color: #6b7280; margin: 20px 0;">Le librerie non si sono caricate correttamente.</p>
+                        <p style="color: #6b7280; margin: 10px 0;"><strong>Controlla:</strong></p>
+                        <ul style="color: #6b7280; text-align: left; max-width: 400px; margin: 20px auto;">
+                            <li>✓ Connessione internet attiva</li>
+                            <li>✓ Browser aggiornato (Chrome/Safari consigliati)</li>
+                            <li>✓ Nessun blocco di contenuti/ad-blocker</li>
+                        </ul>
+                        <button onclick="location.reload()" style="background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 20px;">
+                            🔄 Riprova
+                        </button>
+                        <div style="margin-top: 30px; padding: 15px; background: #fee2e2; border-radius: 8px;">
+                            <p style="color: #991b1b; font-weight: bold;">DEBUG INFO:</p>
+                            <p style="color: #991b1b; font-size: 12px; margin: 5px 0;">
+                                React: ${typeof React !== 'undefined' ? '✅' : '❌'}<br>
+                                ReactDOM: ${typeof ReactDOM !== 'undefined' ? '✅' : '❌'}<br>
+                                Firebase: ${typeof firebase !== 'undefined' ? '✅' : '❌'}<br>
+                                Babel: ${typeof Babel !== 'undefined' ? '✅' : '❌'}
+                            </p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Tutto caricato correttamente
+            console.log('✅ Tutte le librerie caricate!');
+            console.log('🎨 Inizializzo React...');
+            
+            try {
+                document.getElementById('debug-status').innerHTML = '✅ Librerie OK - Caricamento App...';
+                document.getElementById('debug-status').style.background = '#10b981';
+                
+                const root = ReactDOM.createRoot(document.getElementById('root'));
+                root.render(<App />);
+                
+                console.log('✅ App React renderizzata!');
+                
+                // Nascondi status dopo 3 secondi se tutto ok
+                setTimeout(() => {
+                    const statusBar = document.getElementById('debug-status');
+                    if (statusBar.textContent.includes('✅')) {
+                        statusBar.style.display = 'none';
+                        document.getElementById('root').style.marginTop = '0';
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                console.error('❌ ERRORE durante render React:', error);
+                document.getElementById('debug-status').innerHTML = '❌ Errore render: ' + error.message;
+                document.getElementById('debug-status').style.background = '#dc2626';
+            }
+        }, 3000);
+    </script>
+</body>
+</html>
