@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker Spese Famiglia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React e ReactDOM DEVONO essere caricati PRIMA -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        body { 
+            font-family: system-ui, -apple-system, sans-serif;
+            overscroll-behavior: none;
+        }
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+    
+    <!-- Fallback se non carica -->
+    <noscript>
+        <div style="text-align: center; padding: 50px;">
+            <h1>⚠️ JavaScript richiesto</h1>
+            <p>Abilita JavaScript nel tuo browser per usare l'app</p>
+        </div>
+    </noscript>
+
+    <script type="text/babel" data-type="module">
+        // Verifica che tutte le librerie siano caricate
+        setTimeout(() => {
+            if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof firebase === 'undefined') {
+                document.getElementById('root').innerHTML = `
+                    <div style="text-align: center; padding: 50px; font-family: system-ui;">
+                        <h1 style="color: #dc2626; font-size: 2rem;">❌ Errore di Caricamento</h1>
+                        <p style="color: #6b7280; margin: 20px 0;">Le librerie non si sono caricate correttamente.</p>
+                        <p style="color: #6b7280; margin: 10px 0;"><strong>Controlla:</strong></p>
+                        <ul style="color: #6b7280; text-align: left; max-width: 400px; margin: 20px auto;">
+                            <li>✓ Connessione internet attiva</li>
+                            <li>✓ Browser aggiornato (Chrome/Safari consigliati)</li>
+                            <li>✓ Nessun blocco di contenuti/ad-blocker</li>
+                        </ul>
+                        <button onclick="location.reload()" style="background: #2563eb; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; margin-top: 20px;">
+                            🔄 Riprova
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+        }, 5000);
+
+        const { useState, useEffect } = React;
+
+        // Configurazione Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAIDL3WgLSagcABDgXh3P0zlHq77lYTnpc",
+            authDomain: "tracker-di-spese.firebaseapp.com",
+            projectId: "tracker-di-spese",
+            storageBucket: "tracker-di-spese.firebasestorage.app",
+            messagingSenderId: "68753897947",
+            appId: "1:68753897947:web:3699b0dde868c1457a4ffe"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // Componente principale
+        function App() {
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [view, setView] = useState('spese'); // spese, categorie, reminder
+            const [spese, setSpese] = useState([]);
+            const [categorie, setCategorie] = useState([]);
+            const [reminders, setReminders] = useState([]);
+            const [showAddSpesa, setShowAddSpesa] = useState(false);
+            const [showAddCategoria, setShowAddCategoria] = useState(false);
+            const [showAddReminder, setShowAddReminder] = useState(false);
+            const [filtroCategoria, setFiltroCategoria] = useState('tutte');
+            const [reminderScaduti, setReminderScaduti] = useState(0);
+
+            // Auth listener
+            useEffect(() => {
+                const unsubscribe = auth.onAuthStateChanged(user => {
+                    setUser(user);
+                    setLoading(false);
+                });
+                return unsubscribe;
+            }, []);
+
+            // Listener Firestore - Spese
+            useEffect(() => {
+                if (!user) return;
+                
+                const unsubscribe = db.collection('spese')
+                    .orderBy('data', 'desc')
+                    .onSnapshot(snapshot => {
+                        const speseData = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        setSpese(speseData);
+                    });
+                
+                return unsubscribe;
+            }, [user]);
+
+            // Listener Firestore - Categorie
+            useEffect(() => {
+                if (!user) return;
+                
+                const unsubscribe = db.collection('categorie')
+                    .orderBy('nome')
+                    .onSnapshot(snapshot => {
+                        const categorieData = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        setCategorie(categorieData);
+                    });
+                
+                return unsubscribe;
+            }, [user]);
+
+            // Listener Firestore - Reminder
+            useEffect(() => {
+                if (!user) return;
+                
+                const unsubscribe = db.collection('reminders')
+                    .orderBy('dataScadenza')
+                    .onSnapshot(snapshot => {
+                        const remindersData = snapshot.docs.map(doc => ({
+                            id: doc.id,
+                            ...doc.data()
+                        }));
+                        setReminders(remindersData);
+                        
+                        // Conta reminder scaduti
+                        const oggi = new Date().toISOString().split('T')[0];
+                        const scaduti = remindersData.filter(r => 
+                            !r.completato && r.dataScadenza < oggi
+                        ).length;
+                        setReminderScaduti(scaduti);
+                        
+                        // Notifica browser se ci sono reminder scaduti
+                        if (scaduti > 0 && Notification.permission === 'granted') {
+                            new Notification('Tracker Spese', {
+                                body: `Hai ${scaduti} reminder scaduti!`,
+                                icon: '💰'
+                            });
+                        }
+                    });
+                
+                return unsubscribe;
+            }, [user]);
+
+            // Richiedi permesso notifiche
+            useEffect(() => {
+                if (user && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+            }, [user]);
+
+            if (loading) {
+                return (
+                    <div className="flex items-center justify-center h-screen">
+                        <div className="text-center">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                            <p className="mt-4 text-gray-600">Caricamento...</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (!user) {
+                return <LoginPage />;
+            }
+
+            return (
+                <div className="min-h-screen pb-20">
+                    {/* Header */}
+                    <div className="bg-blue-600 text-white p-4 sticky top-0 z-10 shadow-lg">
+                        <div className="flex justify-between items-center">
+                            <h1 className="text-xl font-bold">💰 Tracker Spese</h1>
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm">{user.email}</span>
+                                <button 
+                                    onClick={() => auth.signOut()}
+                                    className="bg-blue-700 px-3 py-1 rounded text-sm hover:bg-blue-800"
+                                >
+                                    Esci
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Alert Reminder Scaduti */}
+                    {reminderScaduti > 0 && view !== 'reminder' && (
+                        <div className="bg-red-500 text-white p-3 text-center cursor-pointer hover:bg-red-600"
+                             onClick={() => setView('reminder')}>
+                            ⚠️ Hai {reminderScaduti} reminder scaduti! Clicca per visualizzarli
+                        </div>
+                    )}
+
+                    {/* Contenuto */}
+                    <div className="max-w-4xl mx-auto p-4">
+                        {view === 'spese' && (
+                            <SpeseView 
+                                spese={spese}
+                                categorie={categorie}
+                                filtroCategoria={filtroCategoria}
+                                setFiltroCategoria={setFiltroCategoria}
+                                showAddSpesa={showAddSpesa}
+                                setShowAddSpesa={setShowAddSpesa}
+                            />
+                        )}
+                        
+                        {view === 'categorie' && (
+                            <CategorieView 
+                                categorie={categorie}
+                                showAddCategoria={showAddCategoria}
+                                setShowAddCategoria={setShowAddCategoria}
+                            />
+                        )}
+                        
+                        {view === 'reminder' && (
+                            <ReminderView 
+                                reminders={reminders}
+                                showAddReminder={showAddReminder}
+                                setShowAddReminder={setShowAddReminder}
+                            />
+                        )}
+                    </div>
+
+                    {/* Bottom Navigation */}
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+                        <div className="flex justify-around items-center p-2">
+                            <button 
+                                onClick={() => setView('spese')}
+                                className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'spese' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                            >
+                                <span className="text-2xl">💳</span>
+                                <span className="text-xs mt-1">Spese</span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => setView('categorie')}
+                                className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'categorie' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                            >
+                                <span className="text-2xl">📁</span>
+                                <span className="text-xs mt-1">Categorie</span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => setView('reminder')}
+                                className={`flex flex-col items-center p-2 rounded flex-1 relative ${view === 'reminder' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                            >
+                                <span className="text-2xl">🔔</span>
+                                <span className="text-xs mt-1">Reminder</span>
+                                {reminderScaduti > 0 && (
+                                    <span className="absolute top-0 right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center badge">
+                                        {reminderScaduti}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Componente Login/Registrazione
+        function LoginPage() {
+            const [isLogin, setIsLogin] = useState(true);
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setError('');
+                setLoading(true);
+
+                try {
+                    if (isLogin) {
+                        await auth.signInWithEmailAndPassword(email, password);
+                    } else {
+                        await auth.createUserWithEmailAndPassword(email, password);
+                    }
+                } catch (err) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+                        <div className="text-center mb-8">
+                            <div className="text-6xl mb-4">💰</div>
+                            <h1 className="text-3xl font-bold text-gray-800">Tracker Spese</h1>
+                            <p className="text-gray-600 mt-2">Gestisci le spese di famiglia</p>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    required
+                                    minLength="6"
+                                />
+                            </div>
+
+                            {error && (
+                                <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm">
+                                    {error}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                            >
+                                {loading ? 'Caricamento...' : (isLogin ? 'Accedi' : 'Registrati')}
+                            </button>
+                        </form>
+
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={() => setIsLogin(!isLogin)}
+                                className="text-blue-600 hover:underline text-sm"
+                            >
+                                {isLogin ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Vista Spese
+        function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, showAddSpesa, setShowAddSpesa }) {
+            const speseFiltrate = filtroCategoria === 'tutte' 
+                ? spese 
+                : spese.filter(s => s.categoria === filtroCategoria);
+
+            const totale = speseFiltrate.reduce((acc, spesa) => acc + parseFloat(spesa.importo), 0);
+
+            const eliminaSpesa = async (id) => {
+                if (confirm('Vuoi eliminare questa spesa?')) {
+                    await db.collection('spese').doc(id).delete();
+                }
+            };
+
+            return (
+                <div className="fade-in">
+                    {/* Filtri */}
+                    <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
+                        <button
+                            onClick={() => setFiltroCategoria('tutte')}
+                            className={`px-4 py-2 rounded-full whitespace-nowrap ${filtroCategoria === 'tutte' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                        >
+                            Tutte
+                        </button>
+                        {categorie.map(cat => (
+                            <button
+                                key={cat.id}
+                                onClick={() => setFiltroCategoria(cat.nome)}
+                                className={`px-4 py-2 rounded-full whitespace-nowrap ${filtroCategoria === cat.nome ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                            >
+                                {cat.icona} {cat.nome}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Totale */}
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-6 mb-4 shadow-lg">
+                        <p className="text-sm opacity-90">Totale {filtroCategoria !== 'tutte' ? filtroCategoria : ''}</p>
+                        <p className="text-4xl font-bold">€ {totale.toFixed(2)}</p>
+                        <p className="text-sm opacity-75 mt-1">{speseFiltrate.length} spese</p>
+                    </div>
+
+                    {/* Pulsante Aggiungi */}
+                    <button
+                        onClick={() => setShowAddSpesa(true)}
+                        className="w-full bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 mb-4 shadow"
+                    >
+                        ➕ Aggiungi Spesa
+                    </button>
+
+                    {/* Lista Spese */}
+                    <div className="space-y-3">
+                        {speseFiltrate.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400">
+                                <p className="text-4xl mb-2">📭</p>
+                                <p>Nessuna spesa registrata</p>
+                            </div>
+                        ) : (
+                            speseFiltrate.map(spesa => {
+                                const cat = categorie.find(c => c.nome === spesa.categoria);
+                                return (
+                                    <div key={spesa.id} className="bg-white rounded-lg p-4 shadow flex justify-between items-center">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <span className="text-3xl">{cat?.icona || '💰'}</span>
+                                            <div className="flex-1">
+                                                <p className="font-medium text-gray-800">{spesa.descrizione}</p>
+                                                <p className="text-sm text-gray-500">{spesa.categoria}</p>
+                                                <p className="text-xs text-gray-400">{new Date(spesa.data).toLocaleDateString('it-IT')}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex items-center gap-2">
+                                            <div>
+                                                <p className="text-xl font-bold text-gray-800">€ {parseFloat(spesa.importo).toFixed(2)}</p>
+                                                {spesa.nota && <p className="text-xs text-gray-500">{spesa.nota}</p>}
+                                            </div>
+                                            <button
+                                                onClick={() => eliminaSpesa(spesa.id)}
+                                                className="text-red-500 hover:text-red-700 p-2"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+
+                    {/* Modal Aggiungi Spesa */}
+                    {showAddSpesa && (
+                        <AddSpesaModal 
+                            onClose={() => setShowAddSpesa(false)}
+                            categorie={categorie}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        // Modal Aggiungi Spesa
+        function AddSpesaModal({ onClose, categorie }) {
+            const [descrizione, setDescrizione] = useState('');
+            const [importo, setImporto] = useState('');
+            const [categoria, setCategoria] = useState('');
+            const [data, setData] = useState(new Date().toISOString().split('T')[0]);
+            const [nota, setNota] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    await db.collection('spese').add({
+                        descrizione,
+                        importo: parseFloat(importo),
+                        categoria,
+                        data,
+                        nota,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        userId: auth.currentUser.uid
+                    });
+                    onClose();
+                } catch (err) {
+                    alert('Errore: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Nuova Spesa</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione *</label>
+                                <input
+                                    type="text"
+                                    value={descrizione}
+                                    onChange={(e) => setDescrizione(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    placeholder="Es: Spesa supermercato"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Importo (€) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={importo}
+                                    onChange={(e) => setImporto(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    placeholder="0.00"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                                <select
+                                    value={categoria}
+                                    onChange={(e) => setCategoria(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                >
+                                    <option value="">Seleziona categoria</option>
+                                    {categorie.map(cat => (
+                                        <option key={cat.id} value={cat.nome}>
+                                            {cat.icona} {cat.nome}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                                <input
+                                    type="date"
+                                    value={data}
+                                    onChange={(e) => setData(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nota (opzionale)</label>
+                                <textarea
+                                    value={nota}
+                                    onChange={(e) => setNota(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    rows="2"
+                                    placeholder="Note aggiuntive..."
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Salvataggio...' : 'Aggiungi'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Vista Categorie
+        function CategorieView({ categorie, showAddCategoria, setShowAddCategoria }) {
+            const eliminaCategoria = async (id) => {
+                if (confirm('Vuoi eliminare questa categoria? Le spese associate rimarranno ma dovrai riassegnarle.')) {
+                    await db.collection('categorie').doc(id).delete();
+                }
+            };
+
+            return (
+                <div className="fade-in">
+                    <div className="mb-4">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Le tue Categorie</h2>
+                        <p className="text-gray-600 text-sm">Gestisci le categorie per organizzare le spese</p>
+                    </div>
+
+                    <button
+                        onClick={() => setShowAddCategoria(true)}
+                        className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 mb-4 shadow"
+                    >
+                        ➕ Nuova Categoria
+                    </button>
+
+                    <div className="space-y-3">
+                        {categorie.length === 0 ? (
+                            <div className="text-center py-12 text-gray-400">
+                                <p className="text-4xl mb-2">📁</p>
+                                <p>Nessuna categoria creata</p>
+                                <p className="text-sm mt-2">Crea la prima categoria per iniziare</p>
+                            </div>
+                        ) : (
+                            categorie.map(cat => (
+                                <div key={cat.id} className="bg-white rounded-lg p-4 shadow flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-4xl">{cat.icona}</span>
+                                        <div>
+                                            <p className="font-medium text-gray-800 text-lg">{cat.nome}</p>
+                                            {cat.descrizione && <p className="text-sm text-gray-500">{cat.descrizione}</p>}
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => eliminaCategoria(cat.id)}
+                                        className="text-red-500 hover:text-red-700 p-2"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    {showAddCategoria && (
+                        <AddCategoriaModal onClose={() => setShowAddCategoria(false)} />
+                    )}
+                </div>
+            );
+        }
+
+        // Modal Aggiungi Categoria
+        function AddCategoriaModal({ onClose }) {
+            const [nome, setNome] = useState('');
+            const [icona, setIcona] = useState('💰');
+            const [descrizione, setDescrizione] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const iconeComuni = ['🛒', '🏠', '🚗', '💊', '🎓', '🎉', '✈️', '🍕', '👕', '💰', '📱', '⚡'];
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    await db.collection('categorie').add({
+                        nome,
+                        icona,
+                        descrizione,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    onClose();
+                } catch (err) {
+                    alert('Errore: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Nuova Categoria</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Icona *</label>
+                                <div className="grid grid-cols-6 gap-2">
+                                    {iconeComuni.map(ic => (
+                                        <button
+                                            key={ic}
+                                            type="button"
+                                            onClick={() => setIcona(ic)}
+                                            className={`text-3xl p-3 rounded-lg border-2 ${icona === ic ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`}
+                                        >
+                                            {ic}
+                                        </button>
+                                    ))}
+                                </div>
+                                <input
+                                    type="text"
+                                    value={icona}
+                                    onChange={(e) => setIcona(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 mt-2"
+                                    placeholder="O inserisci emoji personalizzata"
+                                    maxLength="2"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                                <input
+                                    type="text"
+                                    value={nome}
+                                    onChange={(e) => setNome(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    placeholder="Es: Alimentari"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+                                <input
+                                    type="text"
+                                    value={descrizione}
+                                    onChange={(e) => setDescrizione(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Es: Spese per cibo e bevande"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Salvataggio...' : 'Crea'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Vista Reminder
+        function ReminderView({ reminders, showAddReminder, setShowAddReminder }) {
+            const oggi = new Date().toISOString().split('T')[0];
+            
+            const toggleCompletato = async (id, completato) => {
+                await db.collection('reminders').doc(id).update({
+                    completato: !completato
+                });
+            };
+
+            const eliminaReminder = async (id) => {
+                if (confirm('Vuoi eliminare questo reminder?')) {
+                    await db.collection('reminders').doc(id).delete();
+                }
+            };
+
+            const reminderAttivi = reminders.filter(r => !r.completato);
+            const reminderCompletati = reminders.filter(r => r.completato);
+
+            return (
+                <div className="fade-in">
+                    <div className="mb-4">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">I tuoi Reminder</h2>
+                        <p className="text-gray-600 text-sm">Gestisci promemoria e scadenze</p>
+                    </div>
+
+                    <button
+                        onClick={() => setShowAddReminder(true)}
+                        className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 mb-4 shadow"
+                    >
+                        ➕ Nuovo Reminder
+                    </button>
+
+                    {/* Reminder Attivi */}
+                    <div className="mb-6">
+                        <h3 className="font-bold text-gray-700 mb-3">Da Fare ({reminderAttivi.length})</h3>
+                        <div className="space-y-3">
+                            {reminderAttivi.length === 0 ? (
+                                <div className="text-center py-8 text-gray-400">
+                                    <p className="text-3xl mb-2">✅</p>
+                                    <p>Nessun reminder attivo</p>
+                                </div>
+                            ) : (
+                                reminderAttivi.map(reminder => {
+                                    const isScaduto = reminder.dataScadenza < oggi;
+                                    return (
+                                        <div key={reminder.id} className={`bg-white rounded-lg p-4 shadow border-l-4 ${isScaduto ? 'border-red-500' : 'border-blue-500'}`}>
+                                            <div className="flex items-start gap-3">
+                                                <button
+                                                    onClick={() => toggleCompletato(reminder.id, reminder.completato)}
+                                                    className="mt-1 w-6 h-6 rounded border-2 border-gray-300 hover:border-blue-600"
+                                                />
+                                                <div className="flex-1">
+                                                    <p className="font-medium text-gray-800">{reminder.titolo}</p>
+                                                    {reminder.descrizione && (
+                                                        <p className="text-sm text-gray-600 mt-1">{reminder.descrizione}</p>
+                                                    )}
+                                                    <div className="flex items-center gap-2 mt-2">
+                                                        <span className={`text-xs px-2 py-1 rounded ${isScaduto ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                            {isScaduto ? '⚠️ Scaduto' : '📅'} {new Date(reminder.dataScadenza).toLocaleDateString('it-IT')}
+                                                        </span>
+                                                        {reminder.importoStimato && (
+                                                            <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">
+                                                                💰 € {reminder.importoStimato}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => eliminaReminder(reminder.id)}
+                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Reminder Completati */}
+                    {reminderCompletati.length > 0 && (
+                        <div>
+                            <h3 className="font-bold text-gray-700 mb-3">Completati ({reminderCompletati.length})</h3>
+                            <div className="space-y-3">
+                                {reminderCompletati.map(reminder => (
+                                    <div key={reminder.id} className="bg-gray-50 rounded-lg p-4 shadow opacity-75">
+                                        <div className="flex items-start gap-3">
+                                            <button
+                                                onClick={() => toggleCompletato(reminder.id, reminder.completato)}
+                                                className="mt-1 w-6 h-6 rounded border-2 border-green-500 bg-green-500 text-white flex items-center justify-center"
+                                            >
+                                                ✓
+                                            </button>
+                                            <div className="flex-1">
+                                                <p className="font-medium text-gray-600 line-through">{reminder.titolo}</p>
+                                                {reminder.descrizione && (
+                                                    <p className="text-sm text-gray-500 mt-1">{reminder.descrizione}</p>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => eliminaReminder(reminder.id)}
+                                                className="text-red-500 hover:text-red-700 p-1"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {showAddReminder && (
+                        <AddReminderModal onClose={() => setShowAddReminder(false)} />
+                    )}
+                </div>
+            );
+        }
+
+        // Modal Aggiungi Reminder
+        function AddReminderModal({ onClose }) {
+            const [titolo, setTitolo] = useState('');
+            const [descrizione, setDescrizione] = useState('');
+            const [dataScadenza, setDataScadenza] = useState('');
+            const [importoStimato, setImportoStimato] = useState('');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    await db.collection('reminders').add({
+                        titolo,
+                        descrizione,
+                        dataScadenza,
+                        importoStimato: importoStimato ? parseFloat(importoStimato) : null,
+                        completato: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    onClose();
+                } catch (err) {
+                    alert('Errore: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Nuovo Reminder</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Titolo *</label>
+                                <input
+                                    type="text"
+                                    value={titolo}
+                                    onChange={(e) => setTitolo(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                    placeholder="Es: Pagare bolletta luce"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+                                <textarea
+                                    value={descrizione}
+                                    onChange={(e) => setDescrizione(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    rows="2"
+                                    placeholder="Note aggiuntive..."
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data Scadenza *</label>
+                                <input
+                                    type="date"
+                                    value={dataScadenza}
+                                    onChange={(e) => setDataScadenza(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Importo Stimato (€) - Opzionale</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={importoStimato}
+                                    onChange={(e) => setImportoStimato(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    placeholder="0.00"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Salvataggio...' : 'Crea'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Render
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
