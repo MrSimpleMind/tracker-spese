@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Spese">
-    <link rel="manifest" href="manifest.json">
-    <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="manifest" href="/tracker-spese/manifest.json">
+    <link rel="apple-touch-icon" href="/tracker-spese/icon-192.png">
     <title>Tracker Spese Famiglia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -89,7 +89,7 @@
         // Registra Service Worker per PWA
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js').catch(err => {
+                navigator.serviceWorker.register('/tracker-spese/sw.js').catch(err => {
                     console.log('Service Worker registration failed:', err);
                 });
             });
@@ -99,7 +99,7 @@
         function App() {
             const [user, setUser] = useState(null);
             const [loading, setLoading] = useState(true);
-            const [view, setView] = useState('spese'); // spese, categorie, reminder
+            const [view, setView] = useState('spese');
             const [spese, setSpese] = useState([]);
             const [categorie, setCategorie] = useState([]);
             const [reminders, setReminders] = useState([]);
@@ -169,14 +169,12 @@
                         }));
                         setReminders(remindersData);
                         
-                        // Conta reminder scaduti
                         const oggi = new Date().toISOString().split('T')[0];
                         const scaduti = remindersData.filter(r => 
                             !r.completato && r.dataScadenza < oggi
                         ).length;
                         setReminderScaduti(scaduti);
                         
-                        // Notifica browser se ci sono reminder scaduti
                         if (scaduti > 0 && Notification.permission === 'granted') {
                             new Notification('Tracker Spese', {
                                 body: `Hai ${scaduti} reminder scaduti!`,
@@ -188,7 +186,6 @@
                 return unsubscribe;
             }, [user]);
 
-            // Richiedi permesso notifiche
             useEffect(() => {
                 if (user && Notification.permission === 'default') {
                     Notification.requestPermission();
@@ -212,7 +209,6 @@
 
             return (
                 <div className="min-h-screen pb-20">
-                    {/* Header */}
                     <div className="bg-blue-600 text-white p-3 sticky top-0 z-10 shadow-lg">
                         <div className="flex justify-between items-center">
                             <span className="text-sm truncate flex-1 mr-2">{user.email}</span>
@@ -225,7 +221,6 @@
                         </div>
                     </div>
 
-                    {/* Alert Reminder Scaduti */}
                     {reminderScaduti > 0 && view !== 'reminder' && (
                         <div className="bg-red-500 text-white p-3 text-center cursor-pointer hover:bg-red-600"
                              onClick={() => setView('reminder')}>
@@ -233,7 +228,6 @@
                         </div>
                     )}
 
-                    {/* Contenuto */}
                     <div className="max-w-4xl mx-auto p-4">
                         {view === 'spese' && (
                             <SpeseView 
@@ -271,7 +265,6 @@
                         )}
                     </div>
 
-                    {/* Bottom Navigation */}
                     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
                         <div className="flex justify-around items-center p-2">
                             <button 
@@ -308,7 +301,6 @@
             );
         }
 
-        // Componente Login/Registrazione
         function LoginPage() {
             const [isLogin, setIsLogin] = useState(true);
             const [email, setEmail] = useState('');
@@ -395,7 +387,6 @@
             );
         }
 
-        // Vista Spese
         function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, showAddSpesa, setShowAddSpesa, showGrafico, setShowGrafico, editingSpesa, setEditingSpesa }) {
             const speseFiltrate = filtroCategoria === 'tutte' 
                 ? spese 
@@ -403,7 +394,6 @@
 
             const totale = speseFiltrate.reduce((acc, spesa) => acc + parseFloat(spesa.importo), 0);
 
-            // Calcoli per mese corrente e precedente
             const oggi = new Date();
             const meseCorrente = oggi.getMonth();
             const annoCorrente = oggi.getFullYear();
@@ -433,7 +423,6 @@
 
             return (
                 <div className="fade-in">
-                    {/* Filtri */}
                     <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
                         <button
                             onClick={() => setFiltroCategoria('tutte')}
@@ -452,7 +441,6 @@
                         ))}
                     </div>
 
-                    {/* Totale con Statistiche Mensili */}
                     <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 mb-4 shadow-lg">
                         <div className="mb-3">
                             <p className="text-xs opacity-90 mb-1">
@@ -498,7 +486,6 @@
                         )}
                     </div>
 
-                    {/* Pulsante Aggiungi */}
                     <button
                         onClick={() => setShowAddSpesa(true)}
                         className="w-full bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 mb-4 shadow"
@@ -506,7 +493,6 @@
                         ➕ Aggiungi Spesa
                     </button>
 
-                    {/* Lista Spese */}
                     <div className="space-y-3">
                         {speseFiltrate.length === 0 ? (
                             <div className="text-center py-12 text-gray-400">
@@ -550,7 +536,6 @@
                         )}
                     </div>
 
-                    {/* Modal Aggiungi Spesa */}
                     {showAddSpesa && (
                         <AddSpesaModal 
                             onClose={() => setShowAddSpesa(false)}
@@ -558,7 +543,6 @@
                         />
                     )}
 
-                    {/* Modal Edit Spesa */}
                     {editingSpesa && (
                         <EditSpesaModal 
                             spesa={editingSpesa}
@@ -567,7 +551,6 @@
                         />
                     )}
 
-                    {/* Modal Grafico Andamento */}
                     {showGrafico && (
                         <GraficoAndamentoModal 
                             spese={spese}
@@ -578,7 +561,6 @@
             );
         }
 
-        // Modal Aggiungi Spesa
         function AddSpesaModal({ onClose, categorie }) {
             const [descrizione, setDescrizione] = useState('');
             const [importo, setImporto] = useState('');
@@ -704,7 +686,6 @@
             );
         }
 
-        // Modal Edit Spesa
         function EditSpesaModal({ spesa, onClose, categorie }) {
             const [descrizione, setDescrizione] = useState(spesa.descrizione);
             const [importo, setImporto] = useState(spesa.importo);
@@ -825,7 +806,6 @@
             );
         }
 
-        // Modal Grafico Andamento
         function GraficoAndamentoModal({ spese, onClose }) {
             const canvasRef = React.useRef(null);
             const chartRef = React.useRef(null);
@@ -833,7 +813,6 @@
             React.useEffect(() => {
                 if (!canvasRef.current) return;
 
-                // Prepara dati ultimi 6 mesi
                 const oggi = new Date();
                 const datiMesi = [];
                 
@@ -855,12 +834,10 @@
                     });
                 }
 
-                // Distruggi grafico esistente
                 if (chartRef.current) {
                     chartRef.current.destroy();
                 }
 
-                // Crea nuovo grafico
                 const ctx = canvasRef.current.getContext('2d');
                 chartRef.current = new Chart(ctx, {
                     type: 'line',
@@ -942,7 +919,6 @@
             );
         }
 
-        // Vista Categorie
         function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editingCategoria, setEditingCategoria }) {
             const eliminaCategoria = async (id) => {
                 if (confirm('Vuoi eliminare questa categoria? Le spese associate rimarranno ma dovrai riassegnarle.')) {
@@ -1011,7 +987,6 @@
             );
         }
 
-        // Modal Aggiungi Categoria
         function AddCategoriaModal({ onClose }) {
             const [nome, setNome] = useState('');
             const [descrizione, setDescrizione] = useState('');
@@ -1024,7 +999,7 @@
                 try {
                     await db.collection('categorie').add({
                         nome,
-                        icona: '📁', // Icona di default non visibile
+                        icona: '📁',
                         descrizione,
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -1090,7 +1065,6 @@
             );
         }
 
-        // Modal Edit Categoria
         function EditCategoriaModal({ categoria, onClose }) {
             const [nome, setNome] = useState(categoria.nome);
             const [descrizione, setDescrizione] = useState(categoria.descrizione || '');
@@ -1166,7 +1140,6 @@
             );
         }
 
-        // Vista Reminder
         function ReminderView({ reminders, showAddReminder, setShowAddReminder, editingReminder, setEditingReminder }) {
             const oggi = new Date().toISOString().split('T')[0];
             
@@ -1199,7 +1172,6 @@
                         ➕ Nuovo Reminder
                     </button>
 
-                    {/* Reminder Attivi */}
                     <div className="mb-6">
                         <h3 className="font-bold text-gray-700 mb-3">Da Fare ({reminderAttivi.length})</h3>
                         <div className="space-y-3">
@@ -1256,7 +1228,6 @@
                         </div>
                     </div>
 
-                    {/* Reminder Completati */}
                     {reminderCompletati.length > 0 && (
                         <div>
                             <h3 className="font-bold text-gray-700 mb-3">Completati ({reminderCompletati.length})</h3>
@@ -1303,7 +1274,6 @@
             );
         }
 
-        // Modal Aggiungi Reminder
         function AddReminderModal({ onClose }) {
             const [titolo, setTitolo] = useState('');
             const [descrizione, setDescrizione] = useState('');
@@ -1409,7 +1379,6 @@
             );
         }
 
-        // Modal Edit Reminder
         function EditReminderModal({ reminder, onClose }) {
             const [titolo, setTitolo] = useState(reminder.titolo);
             const [descrizione, setDescrizione] = useState(reminder.descrizione || '');
@@ -1511,7 +1480,6 @@
             );
         }
 
-        // Render
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
