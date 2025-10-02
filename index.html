@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Tracker spese famiglia - Gestisci le spese di famiglia in modo semplice">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Spese">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <title>Tracker Spese Famiglia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -15,6 +22,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Chart.js per i grafici -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <style>
         body { 
             font-family: system-ui, -apple-system, sans-serif;
@@ -76,6 +86,15 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // Registra Service Worker per PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => {
+                    console.log('Service Worker registration failed:', err);
+                });
+            });
+        }
+
         // Componente principale
         function App() {
             const [user, setUser] = useState(null);
@@ -87,6 +106,10 @@
             const [showAddSpesa, setShowAddSpesa] = useState(false);
             const [showAddCategoria, setShowAddCategoria] = useState(false);
             const [showAddReminder, setShowAddReminder] = useState(false);
+            const [showGrafico, setShowGrafico] = useState(false);
+            const [editingSpesa, setEditingSpesa] = useState(null);
+            const [editingCategoria, setEditingCategoria] = useState(null);
+            const [editingReminder, setEditingReminder] = useState(null);
             const [filtroCategoria, setFiltroCategoria] = useState('tutte');
             const [reminderScaduti, setReminderScaduti] = useState(0);
 
@@ -220,6 +243,10 @@
                                 setFiltroCategoria={setFiltroCategoria}
                                 showAddSpesa={showAddSpesa}
                                 setShowAddSpesa={setShowAddSpesa}
+                                showGrafico={showGrafico}
+                                setShowGrafico={setShowGrafico}
+                                editingSpesa={editingSpesa}
+                                setEditingSpesa={setEditingSpesa}
                             />
                         )}
                         
@@ -228,6 +255,8 @@
                                 categorie={categorie}
                                 showAddCategoria={showAddCategoria}
                                 setShowAddCategoria={setShowAddCategoria}
+                                editingCategoria={editingCategoria}
+                                setEditingCategoria={setEditingCategoria}
                             />
                         )}
                         
@@ -236,6 +265,8 @@
                                 reminders={reminders}
                                 showAddReminder={showAddReminder}
                                 setShowAddReminder={setShowAddReminder}
+                                editingReminder={editingReminder}
+                                setEditingReminder={setEditingReminder}
                             />
                         )}
                     </div>
@@ -365,7 +396,7 @@
         }
 
         // Vista Spese
-        function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, showAddSpesa, setShowAddSpesa }) {
+        function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, showAddSpesa, setShowAddSpesa, showGrafico, setShowGrafico, editingSpesa, setEditingSpesa }) {
             const speseFiltrate = filtroCategoria === 'tutte' 
                 ? spese 
                 : spese.filter(s => s.categoria === filtroCategoria);
@@ -432,30 +463,38 @@
                         </div>
                         
                         {filtroCategoria === 'tutte' && (
-                            <div className="border-t border-blue-500 pt-3 mt-3">
-                                <div className="flex justify-between items-start text-xs mb-2">
-                                    <div className="flex-1">
-                                        <p className="opacity-75 mb-1">Questo mese</p>
-                                        <p className="text-lg font-bold">€ {totaleQuestoMese.toFixed(2)}</p>
-                                        <p className="opacity-75">{speseQuestoMese.length} spese</p>
+                            <>
+                                <div className="border-t border-blue-500 pt-3 mt-3">
+                                    <div className="flex justify-between items-start text-xs mb-2">
+                                        <div className="flex-1">
+                                            <p className="opacity-75 mb-1">Questo mese</p>
+                                            <p className="text-lg font-bold">€ {totaleQuestoMese.toFixed(2)}</p>
+                                            <p className="opacity-75">{speseQuestoMese.length} spese</p>
+                                        </div>
+                                        <div className="flex-1 text-right">
+                                            <p className="opacity-75 mb-1">Mese scorso</p>
+                                            <p className="text-lg font-bold">€ {totaleMeseScorso.toFixed(2)}</p>
+                                            <p className="opacity-75">{speseMeseScorso.length} spese</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1 text-right">
-                                        <p className="opacity-75 mb-1">Mese scorso</p>
-                                        <p className="text-lg font-bold">€ {totaleMeseScorso.toFixed(2)}</p>
-                                        <p className="opacity-75">{speseMeseScorso.length} spese</p>
-                                    </div>
+                                    {totaleMeseScorso > 0 && (
+                                        <div className={`text-center py-2 px-3 rounded ${differenza > 0 ? 'bg-red-500' : 'bg-green-500'} bg-opacity-30 mb-2`}>
+                                            <span className="font-bold">
+                                                {differenza > 0 ? '↑' : '↓'} {Math.abs(percentuale)}%
+                                            </span>
+                                            <span className="text-xs ml-2">
+                                                {differenza > 0 ? 'speso di più' : 'risparmiato'} (€ {Math.abs(differenza).toFixed(2)})
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
-                                {totaleMeseScorso > 0 && (
-                                    <div className={`text-center py-2 px-3 rounded ${differenza > 0 ? 'bg-red-500' : 'bg-green-500'} bg-opacity-30`}>
-                                        <span className="font-bold">
-                                            {differenza > 0 ? '↑' : '↓'} {Math.abs(percentuale)}%
-                                        </span>
-                                        <span className="text-xs ml-2">
-                                            {differenza > 0 ? 'speso di più' : 'risparmiato'} (€ {Math.abs(differenza).toFixed(2)})
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
+                                <button
+                                    onClick={() => setShowGrafico(true)}
+                                    className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-4 rounded text-sm font-medium mt-2"
+                                >
+                                    📊 Mostra Andamento
+                                </button>
+                            </>
                         )}
                     </div>
 
@@ -483,12 +522,20 @@
                                                 <p className="font-bold text-lg text-gray-800">{spesa.descrizione}</p>
                                                 <p className="text-sm text-gray-500">{spesa.categoria}</p>
                                             </div>
-                                            <button
-                                                onClick={() => eliminaSpesa(spesa.id)}
-                                                className="text-red-500 hover:text-red-700 p-1 ml-2"
-                                            >
-                                                🗑️
-                                            </button>
+                                            <div className="flex gap-1 ml-2">
+                                                <button
+                                                    onClick={() => setEditingSpesa(spesa)}
+                                                    className="text-blue-500 hover:text-blue-700 p-1"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => eliminaSpesa(spesa.id)}
+                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="flex justify-between items-end">
                                             <div className="text-xs text-gray-400">
@@ -508,6 +555,23 @@
                         <AddSpesaModal 
                             onClose={() => setShowAddSpesa(false)}
                             categorie={categorie}
+                        />
+                    )}
+
+                    {/* Modal Edit Spesa */}
+                    {editingSpesa && (
+                        <EditSpesaModal 
+                            spesa={editingSpesa}
+                            onClose={() => setEditingSpesa(null)}
+                            categorie={categorie}
+                        />
+                    )}
+
+                    {/* Modal Grafico Andamento */}
+                    {showGrafico && (
+                        <GraficoAndamentoModal 
+                            spese={spese}
+                            onClose={() => setShowGrafico(false)}
                         />
                     )}
                 </div>
@@ -640,8 +704,246 @@
             );
         }
 
+        // Modal Edit Spesa
+        function EditSpesaModal({ spesa, onClose, categorie }) {
+            const [descrizione, setDescrizione] = useState(spesa.descrizione);
+            const [importo, setImporto] = useState(spesa.importo);
+            const [categoria, setCategoria] = useState(spesa.categoria);
+            const [data, setData] = useState(spesa.data);
+            const [nota, setNota] = useState(spesa.nota || '');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    await db.collection('spese').doc(spesa.id).update({
+                        descrizione,
+                        importo: parseFloat(importo),
+                        categoria,
+                        data,
+                        nota,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    onClose();
+                } catch (err) {
+                    alert('Errore: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Modifica Spesa</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione *</label>
+                                <input
+                                    type="text"
+                                    value={descrizione}
+                                    onChange={(e) => setDescrizione(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Importo (€) *</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={importo}
+                                    onChange={(e) => setImporto(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Categoria *</label>
+                                <select
+                                    value={categoria}
+                                    onChange={(e) => setCategoria(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                >
+                                    {categorie.map(cat => (
+                                        <option key={cat.id} value={cat.nome}>
+                                            {cat.nome}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data *</label>
+                                <input
+                                    type="date"
+                                    value={data}
+                                    onChange={(e) => setData(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nota (opzionale)</label>
+                                <textarea
+                                    value={nota}
+                                    onChange={(e) => setNota(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    rows="2"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Salvataggio...' : 'Salva Modifiche'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Modal Grafico Andamento
+        function GraficoAndamentoModal({ spese, onClose }) {
+            const canvasRef = React.useRef(null);
+            const chartRef = React.useRef(null);
+
+            React.useEffect(() => {
+                if (!canvasRef.current) return;
+
+                // Prepara dati ultimi 6 mesi
+                const oggi = new Date();
+                const datiMesi = [];
+                
+                for (let i = 5; i >= 0; i--) {
+                    const mese = new Date(oggi.getFullYear(), oggi.getMonth() - i, 1);
+                    const meseProssimo = new Date(oggi.getFullYear(), oggi.getMonth() - i + 1, 1);
+                    
+                    const speseDelMese = spese.filter(s => {
+                        const dataSpesa = new Date(s.data);
+                        return dataSpesa >= mese && dataSpesa < meseProssimo;
+                    });
+                    
+                    const totale = speseDelMese.reduce((acc, s) => acc + parseFloat(s.importo), 0);
+                    
+                    datiMesi.push({
+                        mese: mese.toLocaleDateString('it-IT', { month: 'short', year: '2-digit' }),
+                        totale: totale,
+                        numSpese: speseDelMese.length
+                    });
+                }
+
+                // Distruggi grafico esistente
+                if (chartRef.current) {
+                    chartRef.current.destroy();
+                }
+
+                // Crea nuovo grafico
+                const ctx = canvasRef.current.getContext('2d');
+                chartRef.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: datiMesi.map(d => d.mese),
+                        datasets: [{
+                            label: 'Spese Mensili (€)',
+                            data: datiMesi.map(d => d.totale),
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const index = context.dataIndex;
+                                        return [
+                                            `Totale: € ${context.parsed.y.toFixed(2)}`,
+                                            `Spese: ${datiMesi[index].numSpese}`
+                                        ];
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '€ ' + value.toFixed(0);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartRef.current) {
+                        chartRef.current.destroy();
+                    }
+                };
+            }, [spese]);
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center rounded-t-2xl">
+                            <h2 className="text-xl font-bold">📊 Andamento Spese</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <div className="p-4">
+                            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                                <p className="text-sm text-gray-600 mb-2">Ultimi 6 mesi</p>
+                                <div style={{ height: '300px' }}>
+                                    <canvas ref={canvasRef}></canvas>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={onClose}
+                                className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700"
+                            >
+                                Chiudi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
         // Vista Categorie
-        function CategorieView({ categorie, showAddCategoria, setShowAddCategoria }) {
+        function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editingCategoria, setEditingCategoria }) {
             const eliminaCategoria = async (id) => {
                 if (confirm('Vuoi eliminare questa categoria? Le spese associate rimarranno ma dovrai riassegnarle.')) {
                     await db.collection('categorie').doc(id).delete();
@@ -676,12 +978,20 @@
                                         <p className="font-bold text-lg text-gray-800">{cat.nome}</p>
                                         {cat.descrizione && <p className="text-sm text-gray-500 mt-1">{cat.descrizione}</p>}
                                     </div>
-                                    <button
-                                        onClick={() => eliminaCategoria(cat.id)}
-                                        className="text-red-500 hover:text-red-700 p-2"
-                                    >
-                                        🗑️
-                                    </button>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={() => setEditingCategoria(cat)}
+                                            className="text-blue-500 hover:text-blue-700 p-2"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            onClick={() => eliminaCategoria(cat.id)}
+                                            className="text-red-500 hover:text-red-700 p-2"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </div>
                             ))
                         )}
@@ -689,6 +999,13 @@
 
                     {showAddCategoria && (
                         <AddCategoriaModal onClose={() => setShowAddCategoria(false)} />
+                    )}
+
+                    {editingCategoria && (
+                        <EditCategoriaModal 
+                            categoria={editingCategoria}
+                            onClose={() => setEditingCategoria(null)}
+                        />
                     )}
                 </div>
             );
@@ -773,8 +1090,84 @@
             );
         }
 
+        // Modal Edit Categoria
+        function EditCategoriaModal({ categoria, onClose }) {
+            const [nome, setNome] = useState(categoria.nome);
+            const [descrizione, setDescrizione] = useState(categoria.descrizione || '');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    await db.collection('categorie').doc(categoria.id).update({
+                        nome,
+                        descrizione,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    onClose();
+                } catch (err) {
+                    alert('Errore: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Modifica Categoria</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                                <input
+                                    type="text"
+                                    value={nome}
+                                    onChange={(e) => setNome(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+                                <input
+                                    type="text"
+                                    value={descrizione}
+                                    onChange={(e) => setDescrizione(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Salvataggio...' : 'Salva Modifiche'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
         // Vista Reminder
-        function ReminderView({ reminders, showAddReminder, setShowAddReminder }) {
+        function ReminderView({ reminders, showAddReminder, setShowAddReminder, editingReminder, setEditingReminder }) {
             const oggi = new Date().toISOString().split('T')[0];
             
             const toggleCompletato = async (id, completato) => {
@@ -823,14 +1216,14 @@
                                             <div className="flex items-start gap-3">
                                                 <button
                                                     onClick={() => toggleCompletato(reminder.id, reminder.completato)}
-                                                    className="mt-1 w-6 h-6 rounded border-2 border-gray-300 hover:border-blue-600"
+                                                    className="mt-1 w-6 h-6 rounded border-2 border-gray-300 hover:border-blue-600 flex-shrink-0"
                                                 />
-                                                <div className="flex-1">
+                                                <div className="flex-1 min-w-0">
                                                     <p className="font-medium text-gray-800">{reminder.titolo}</p>
                                                     {reminder.descrizione && (
                                                         <p className="text-sm text-gray-600 mt-1">{reminder.descrizione}</p>
                                                     )}
-                                                    <div className="flex items-center gap-2 mt-2">
+                                                    <div className="flex flex-wrap items-center gap-2 mt-2">
                                                         <span className={`text-xs px-2 py-1 rounded ${isScaduto ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>
                                                             {isScaduto ? '⚠️ Scaduto' : '📅'} {new Date(reminder.dataScadenza).toLocaleDateString('it-IT')}
                                                         </span>
@@ -841,12 +1234,20 @@
                                                         )}
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={() => eliminaReminder(reminder.id)}
-                                                    className="text-red-500 hover:text-red-700 p-1"
-                                                >
-                                                    🗑️
-                                                </button>
+                                                <div className="flex gap-1 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => setEditingReminder(reminder)}
+                                                        className="text-blue-500 hover:text-blue-700 p-1"
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                    <button
+                                                        onClick={() => eliminaReminder(reminder.id)}
+                                                        className="text-red-500 hover:text-red-700 p-1"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     );
@@ -865,7 +1266,7 @@
                                         <div className="flex items-start gap-3">
                                             <button
                                                 onClick={() => toggleCompletato(reminder.id, reminder.completato)}
-                                                className="mt-1 w-6 h-6 rounded border-2 border-green-500 bg-green-500 text-white flex items-center justify-center"
+                                                className="mt-1 w-6 h-6 rounded border-2 border-green-500 bg-green-500 text-white flex items-center justify-center flex-shrink-0"
                                             >
                                                 ✓
                                             </button>
@@ -890,6 +1291,13 @@
 
                     {showAddReminder && (
                         <AddReminderModal onClose={() => setShowAddReminder(false)} />
+                    )}
+
+                    {editingReminder && (
+                        <EditReminderModal 
+                            reminder={editingReminder}
+                            onClose={() => setEditingReminder(null)}
+                        />
                     )}
                 </div>
             );
@@ -993,6 +1401,108 @@
                                     className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50"
                                 >
                                     {loading ? 'Salvataggio...' : 'Crea'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        // Modal Edit Reminder
+        function EditReminderModal({ reminder, onClose }) {
+            const [titolo, setTitolo] = useState(reminder.titolo);
+            const [descrizione, setDescrizione] = useState(reminder.descrizione || '');
+            const [dataScadenza, setDataScadenza] = useState(reminder.dataScadenza);
+            const [importoStimato, setImportoStimato] = useState(reminder.importoStimato || '');
+            const [loading, setLoading] = useState(false);
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+
+                try {
+                    await db.collection('reminders').doc(reminder.id).update({
+                        titolo,
+                        descrizione,
+                        dataScadenza,
+                        importoStimato: importoStimato ? parseFloat(importoStimato) : null,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    onClose();
+                } catch (err) {
+                    alert('Errore: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg">
+                        <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                            <h2 className="text-xl font-bold">Modifica Reminder</h2>
+                            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Titolo *</label>
+                                <input
+                                    type="text"
+                                    value={titolo}
+                                    onChange={(e) => setTitolo(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione (opzionale)</label>
+                                <textarea
+                                    value={descrizione}
+                                    onChange={(e) => setDescrizione(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    rows="2"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Data Scadenza *</label>
+                                <input
+                                    type="date"
+                                    value={dataScadenza}
+                                    onChange={(e) => setDataScadenza(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Importo Stimato (€) - Opzionale</label>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={importoStimato}
+                                    onChange={(e) => setImportoStimato(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                />
+                            </div>
+
+                            <div className="flex gap-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300"
+                                >
+                                    Annulla
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="flex-1 bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                    {loading ? 'Salvataggio...' : 'Salva Modifiche'}
                                 </button>
                             </div>
                         </form>
