@@ -1,7 +1,26 @@
 function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, showAddSpesa, setShowAddSpesa, showGrafico, setShowGrafico, editingSpesa, setEditingSpesa }) {
+    const [ordinamento, setOrdinamento] = React.useState('data-recente');
+    
+    // Filtra per categoria
     const speseFiltrate = filtroCategoria === 'tutte' 
         ? spese 
         : spese.filter(s => s.categoria === filtroCategoria);
+
+    // Ordina le spese filtrate
+    const speseOrdinate = [...speseFiltrate].sort((a, b) => {
+        switch (ordinamento) {
+            case 'data-recente':
+                return new Date(b.data) - new Date(a.data);
+            case 'data-vecchia':
+                return new Date(a.data) - new Date(b.data);
+            case 'importo-alto':
+                return parseFloat(b.importo) - parseFloat(a.importo);
+            case 'importo-basso':
+                return parseFloat(a.importo) - parseFloat(b.importo);
+            default:
+                return 0;
+        }
+    });
 
     const totale = speseFiltrate.reduce((acc, spesa) => acc + parseFloat(spesa.importo), 0);
 
@@ -34,6 +53,7 @@ function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, show
 
     return (
         <div className="fade-in">
+            {/* Filtri per categoria */}
             <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
                 <button
                     onClick={() => setFiltroCategoria('tutte')}
@@ -104,14 +124,33 @@ function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, show
                 ➕ Aggiungi Spesa
             </button>
 
+            {/* Ordinamento spese */}
+            {speseFiltrate.length > 0 && (
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        🔄 Ordina per:
+                    </label>
+                    <select
+                        value={ordinamento}
+                        onChange={(e) => setOrdinamento(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700"
+                    >
+                        <option value="data-recente">📅 Data (più recente)</option>
+                        <option value="data-vecchia">📅 Data (più vecchia)</option>
+                        <option value="importo-alto">💰 Importo (più alto)</option>
+                        <option value="importo-basso">💰 Importo (più basso)</option>
+                    </select>
+                </div>
+            )}
+
             <div className="space-y-3">
-                {speseFiltrate.length === 0 ? (
+                {speseOrdinate.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                         <p className="text-4xl mb-2">📭</p>
                         <p>Nessuna spesa registrata</p>
                     </div>
                 ) : (
-                    speseFiltrate.map(spesa => {
+                    speseOrdinate.map(spesa => {
                         return (
                             <div key={spesa.id} className="bg-white rounded-lg p-4 shadow">
                                 <div className="flex justify-between items-start mb-2">
