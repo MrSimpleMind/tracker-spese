@@ -77,20 +77,28 @@ function App() {
                 ).length;
                 setReminderScaduti(scaduti);
                 
-                if (scaduti > 0 && Notification.permission === 'granted') {
-                    new Notification('Tracker Spese', {
-                        body: `Hai ${scaduti} reminder scaduti!`,
-                        icon: '💰'
-                    });
+                // FIX iOS: Controlla se le notifiche sono supportate (iOS Safari non le supporta)
+                if (scaduti > 0 && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                    try {
+                        new Notification('Tracker Spese', {
+                            body: `Hai ${scaduti} reminder scaduti!`,
+                            icon: '💰'
+                        });
+                    } catch (error) {
+                        console.log('ℹ️ Notifiche non supportate su questo browser (normale per iOS)');
+                    }
                 }
             });
         
         return unsubscribe;
     }, [user]);
 
+    // FIX iOS: Richiedi permesso notifiche solo se supportate
     React.useEffect(() => {
-        if (user && Notification.permission === 'default') {
-            Notification.requestPermission();
+        if (user && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            Notification.requestPermission().catch(err => {
+                console.log('ℹ️ Notifiche non supportate su questo browser (normale per iOS)');
+            });
         }
     }, [user]);
 
