@@ -86,6 +86,8 @@ function DettaglioTemplateModal({ template, onClose }) {
                                 <span className="font-medium">
                                     {template.frequenza === 'mensile' 
                                         ? `Mensile (giorno ${template.giornoMese})` 
+                                        : template.frequenza === 'bimestrale'
+                                        ? `Bimestrale (giorno ${template.giornoMese})`
                                         : `Annuale (${template.giornoAnno}/${template.meseAnno})`
                                     }
                                 </span>

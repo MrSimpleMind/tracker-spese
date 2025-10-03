@@ -29,6 +29,21 @@ function AddTemplateModal({ onClose, categorie }) {
             }
             
             return prossimaData.toISOString().split('T')[0];
+        } else if (frequenza === 'bimestrale') {
+            // Bimestrale: ogni 2 mesi
+            let prossimaData = new Date(oggi.getFullYear(), oggi.getMonth(), giornoMese);
+            
+            // Se la data è già passata questo mese, passa fra 2 mesi
+            if (prossimaData < oggi) {
+                prossimaData = new Date(oggi.getFullYear(), oggi.getMonth() + 2, giornoMese);
+            }
+            
+            // Gestione giorni "difficili"
+            if (prossimaData.getDate() !== parseInt(giornoMese)) {
+                prossimaData = new Date(prossimaData.getFullYear(), prossimaData.getMonth() + 1, 0);
+            }
+            
+            return prossimaData.toISOString().split('T')[0];
         } else {
             // Annuale
             let prossimaData = new Date(oggi.getFullYear(), meseAnno - 1, giornoAnno);
@@ -65,7 +80,7 @@ function AddTemplateModal({ onClose, categorie }) {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            if (frequenza === 'mensile') {
+            if (frequenza === 'mensile' || frequenza === 'bimestrale') {
                 templateData.giornoMese = parseInt(giornoMese);
             } else {
                 templateData.giornoAnno = parseInt(giornoAnno);
@@ -140,13 +155,20 @@ function AddTemplateModal({ onClose, categorie }) {
 
                     <div className="border-t pt-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">🔄 Frequenza *</label>
-                        <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="grid grid-cols-3 gap-2 mb-4">
                             <button
                                 type="button"
                                 onClick={() => setFrequenza('mensile')}
                                 className={`py-2 px-4 rounded-lg text-sm font-medium ${frequenza === 'mensile' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
                             >
                                 📅 Mensile
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFrequenza('bimestrale')}
+                                className={`py-2 px-4 rounded-lg text-sm font-medium ${frequenza === 'bimestrale' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                            >
+                                📅 Bimestrale
                             </button>
                             <button
                                 type="button"
@@ -157,7 +179,7 @@ function AddTemplateModal({ onClose, categorie }) {
                             </button>
                         </div>
 
-                        {frequenza === 'mensile' && (
+                        {(frequenza === 'mensile' || frequenza === 'bimestrale') && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Giorno del mese *</label>
                                 <select

@@ -1,5 +1,4 @@
 function LoginPage() {
-    const [isLogin, setIsLogin] = React.useState(true);
     const [email, setEmail] = React.useState('');
     const [password, setPassword] = React.useState('');
     const [error, setError] = React.useState('');
@@ -11,13 +10,20 @@ function LoginPage() {
         setLoading(true);
 
         try {
-            if (isLogin) {
-                await auth.signInWithEmailAndPassword(email, password);
-            } else {
-                await auth.createUserWithEmailAndPassword(email, password);
-            }
+            await auth.signInWithEmailAndPassword(email, password);
         } catch (err) {
-            setError(err.message);
+            // Traduci errori comuni in italiano
+            let errorMessage = err.message;
+            if (err.code === 'auth/user-not-found') {
+                errorMessage = 'Account non trovato. Contatta l\'amministratore.';
+            } else if (err.code === 'auth/wrong-password') {
+                errorMessage = 'Password errata.';
+            } else if (err.code === 'auth/invalid-email') {
+                errorMessage = 'Email non valida.';
+            } else if (err.code === 'auth/too-many-requests') {
+                errorMessage = 'Troppi tentativi. Riprova più tardi.';
+            }
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -28,8 +34,8 @@ function LoginPage() {
             <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
                 <div className="text-center mb-8">
                     <div className="text-6xl mb-4">💰</div>
-                    <h1 className="text-3xl font-bold text-gray-800">Tracker Spese</h1>
-                    <p className="text-gray-600 mt-2">Gestisci le spese di famiglia</p>
+                    <h1 className="text-3xl font-bold text-gray-800">Tracker Spese Famiglia</h1>
+                    <p className="text-gray-600 mt-2">App privata - Accedi con le tue credenziali</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -41,6 +47,7 @@ function LoginPage() {
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
+                            placeholder="nome@esempio.com"
                         />
                     </div>
 
@@ -53,6 +60,7 @@ function LoginPage() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             required
                             minLength="6"
+                            placeholder="••••••••"
                         />
                     </div>
 
@@ -67,17 +75,13 @@ function LoginPage() {
                         disabled={loading}
                         className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
                     >
-                        {loading ? 'Caricamento...' : (isLogin ? 'Accedi' : 'Registrati')}
+                        {loading ? 'Accesso in corso...' : 'Accedi'}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center">
-                    <button
-                        onClick={() => setIsLogin(!isLogin)}
-                        className="text-blue-600 hover:underline text-sm"
-                    >
-                        {isLogin ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi'}
-                    </button>
+                <div className="mt-6 text-center text-sm text-gray-500">
+                    <p>🔒 Accesso riservato ai membri della famiglia</p>
+                    <p className="mt-2">Non hai un account? Contatta l'amministratore</p>
                 </div>
             </div>
         </div>

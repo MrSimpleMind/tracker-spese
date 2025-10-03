@@ -24,6 +24,16 @@ function QuickReviewModal({ templates, onClose, categorie }) {
             }
             
             return prossimaData.toISOString().split('T')[0];
+        } else if (template.frequenza === 'bimestrale') {
+            // Bimestrale: +2 mesi
+            let prossimaData = new Date(oggi.getFullYear(), oggi.getMonth() + 2, template.giornoMese);
+            
+            // Gestione giorni "difficili"
+            if (prossimaData.getDate() !== parseInt(template.giornoMese)) {
+                prossimaData = new Date(prossimaData.getFullYear(), prossimaData.getMonth() + 1, 0);
+            }
+            
+            return prossimaData.toISOString().split('T')[0];
         } else {
             // Annuale
             let prossimaData = new Date(oggi.getFullYear() + 1, template.meseAnno - 1, template.giornoAnno);
