@@ -173,6 +173,12 @@ function App() {
                         setEditingReminder={setEditingReminder}
                     />
                 )}
+                
+                {view === 'analytics' && (
+                    <AnalyticsView 
+                        spese={spese}
+                    />
+                )}
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
@@ -204,6 +210,14 @@ function App() {
                                 {reminderScaduti}
                             </span>
                         )}
+                    </button>
+                    
+                    <button 
+                        onClick={() => setView('analytics')}
+                        className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'analytics' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                    >
+                        <span className="text-2xl">📊</span>
+                        <span className="text-xs mt-1">Analytics</span>
                     </button>
                 </div>
             </div>
