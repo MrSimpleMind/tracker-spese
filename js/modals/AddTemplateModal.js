@@ -7,6 +7,8 @@ function AddTemplateModal({ onClose, categorie }) {
     const [giornoMese, setGiornoMese] = React.useState(1);
     const [giornoAnno, setGiornoAnno] = React.useState(1);
     const [meseAnno, setMeseAnno] = React.useState(1);
+    const [primaScadenzaManuale, setPrimaScadenzaManuale] = React.useState('');
+    const [usaPrimaScadenzaManuale, setUsaPrimaScadenzaManuale] = React.useState(false);
     const [loading, setLoading] = React.useState(false);
 
     const calcolaProssimaScadenza = () => {
@@ -45,7 +47,10 @@ function AddTemplateModal({ onClose, categorie }) {
         setLoading(true);
 
         try {
-            const prossimaScadenza = calcolaProssimaScadenza();
+            // Se l'utente ha scelto una prima scadenza manuale, usa quella, altrimenti calcola
+            const prossimaScadenza = usaPrimaScadenzaManuale && primaScadenzaManuale 
+                ? primaScadenzaManuale 
+                : calcolaProssimaScadenza();
             
             const templateData = {
                 descrizione,
@@ -167,9 +172,11 @@ function AddTemplateModal({ onClose, categorie }) {
                                         </option>
                                     ))}
                                 </select>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT')}
-                                </p>
+                                {!usaPrimaScadenzaManuale && (
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT')}
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -205,8 +212,42 @@ function AddTemplateModal({ onClose, categorie }) {
                                         ))}
                                     </select>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1 col-span-2">
-                                    💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT')}
+                                {!usaPrimaScadenzaManuale && (
+                                    <p className="text-xs text-gray-500 mt-1 col-span-2">
+                                        💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Prima scadenza manuale (per testing) */}
+                    <div className="border-t pt-4">
+                        <div className="flex items-center mb-2">
+                            <input
+                                type="checkbox"
+                                id="usaPrimaScadenzaManuale"
+                                checked={usaPrimaScadenzaManuale}
+                                onChange={(e) => setUsaPrimaScadenzaManuale(e.target.checked)}
+                                className="mr-2"
+                            />
+                            <label htmlFor="usaPrimaScadenzaManuale" className="text-sm font-medium text-gray-700">
+                                👁️ Imposta prima scadenza manualmente (per test)
+                            </label>
+                        </div>
+                        
+                        {usaPrimaScadenzaManuale && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Prima scadenza *</label>
+                                <input
+                                    type="date"
+                                    value={primaScadenzaManuale}
+                                    onChange={(e) => setPrimaScadenzaManuale(e.target.value)}
+                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                    required={usaPrimaScadenzaManuale}
+                                />
+                                <p className="text-xs text-orange-600 mt-1">
+                                    ⚠️ Utile per testare: puoi impostare una data passata per vedere il banner di alert
                                 </p>
                             </div>
                         )}
