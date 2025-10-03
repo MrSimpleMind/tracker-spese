@@ -6,16 +6,23 @@ function DettaglioTemplateModal({ template, onClose }) {
         // Carica le spese collegate a questo template
         const unsubscribe = db.collection('spese')
             .where('templateId', '==', template.id)
-            .orderBy('data', 'desc')
-            .limit(12)
-            .onSnapshot(snapshot => {
-                const speseData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setSpese(speseData);
-                setLoading(false);
-            });
+            .onSnapshot(
+                snapshot => {
+                    const speseData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    // Ordina lato client per data (più recente prima) e limita a 12
+                    speseData.sort((a, b) => new Date(b.data) - new Date(a.data));
+                    const speseLimitate = speseData.slice(0, 12);
+                    setSpese(speseLimitate);
+                    setLoading(false);
+                },
+                error => {
+                    console.error('Errore caricamento storico:', error);
+                    setLoading(false);
+                }
+            );
         
         return unsubscribe;
     }, [template.id]);

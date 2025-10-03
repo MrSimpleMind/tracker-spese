@@ -9,15 +9,23 @@ function TemplateRicorrentiModal({ onClose, categorie, onInsertFromTemplate }) {
     React.useEffect(() => {
         const unsubscribe = db.collection('template_ricorrenti')
             .where('userId', '==', auth.currentUser.uid)
-            .orderBy('descrizione')
-            .onSnapshot(snapshot => {
-                const templatesData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setTemplates(templatesData);
-                setLoading(false);
-            });
+            .onSnapshot(
+                snapshot => {
+                    const templatesData = snapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    // Ordina lato client invece che con orderBy (che richiede indice)
+                    templatesData.sort((a, b) => a.descrizione.localeCompare(b.descrizione));
+                    setTemplates(templatesData);
+                    setLoading(false);
+                },
+                error => {
+                    console.error('Errore caricamento template:', error);
+                    alert('Errore nel caricamento dei template: ' + error.message);
+                    setLoading(false);
+                }
+            );
         
         return unsubscribe;
     }, []);

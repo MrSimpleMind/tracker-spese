@@ -124,7 +124,7 @@ function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, show
                     onClick={() => setShowAddSpesa(true)}
                     className="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 shadow"
                 >
-                    ➕ Aggiungi Spesa
+                    ➕ Spesa
                 </button>
                 <button
                     onClick={() => setShowTemplateModal(true)}
