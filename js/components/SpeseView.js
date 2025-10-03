@@ -1,5 +1,7 @@
 function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, showAddSpesa, setShowAddSpesa, showGrafico, setShowGrafico, editingSpesa, setEditingSpesa }) {
     const [ordinamento, setOrdinamento] = React.useState('data-recente');
+    const [showTemplateModal, setShowTemplateModal] = React.useState(false);
+    const [templateToInsert, setTemplateToInsert] = React.useState(null);
     
     // Filtra per categoria
     const speseFiltrate = filtroCategoria === 'tutte' 
@@ -117,12 +119,20 @@ function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, show
                 )}
             </div>
 
-            <button
-                onClick={() => setShowAddSpesa(true)}
-                className="w-full bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 mb-4 shadow"
-            >
-                ➕ Aggiungi Spesa
-            </button>
+            <div className="flex gap-2 mb-4">
+                <button
+                    onClick={() => setShowAddSpesa(true)}
+                    className="flex-1 bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 shadow"
+                >
+                    ➕ Aggiungi Spesa
+                </button>
+                <button
+                    onClick={() => setShowTemplateModal(true)}
+                    className="bg-blue-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-600 shadow whitespace-nowrap"
+                >
+                    ⚙️ Template
+                </button>
+            </div>
 
             {/* Ordinamento spese */}
             {speseFiltrate.length > 0 && (
@@ -188,8 +198,12 @@ function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, show
 
             {showAddSpesa && (
                 <AddSpesaModal 
-                    onClose={() => setShowAddSpesa(false)}
+                    onClose={() => {
+                        setShowAddSpesa(false);
+                        setTemplateToInsert(null);
+                    }}
                     categorie={categorie}
+                    fromTemplate={templateToInsert}
                 />
             )}
 
@@ -205,6 +219,19 @@ function SpeseView({ spese, categorie, filtroCategoria, setFiltroCategoria, show
                 <GraficoAndamentoModal 
                     spese={spese}
                     onClose={() => setShowGrafico(false)}
+                />
+            )}
+
+            {showTemplateModal && (
+                <TemplateRicorrentiModal 
+                    onClose={() => setShowTemplateModal(false)}
+                    categorie={categorie}
+                    onInsertFromTemplate={(template) => {
+                        // Chiude modale template e apre form spesa pre-compilato
+                        setShowTemplateModal(false);
+                        setTemplateToInsert(template);
+                        setShowAddSpesa(true);
+                    }}
                 />
             )}
         </div>

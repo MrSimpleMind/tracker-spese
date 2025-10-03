@@ -14,6 +14,8 @@ function App() {
     const [editingReminder, setEditingReminder] = React.useState(null);
     const [filtroCategoria, setFiltroCategoria] = React.useState('tutte');
     const [reminderScaduti, setReminderScaduti] = React.useState(0);
+    const [templatesScaduti, setTemplatesScaduti] = React.useState([]);
+    const [showQuickReview, setShowQuickReview] = React.useState(false);
 
     // Auth listener
     React.useEffect(() => {
@@ -102,6 +104,28 @@ function App() {
         }
     }, [user]);
 
+    // Listener Firestore - Template Ricorrenti
+    React.useEffect(() => {
+        if (!user) return;
+        
+        const unsubscribe = db.collection('template_ricorrenti')
+            .where('userId', '==', user.uid)
+            .where('attivo', '==', true)
+            .onSnapshot(snapshot => {
+                const templatesData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                // Controlla quali template sono scaduti
+                const oggi = new Date().toISOString().split('T')[0];
+                const scaduti = templatesData.filter(t => t.prossimaScadenza <= oggi);
+                setTemplatesScaduti(scaduti);
+            });
+        
+        return unsubscribe;
+    }, [user]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -135,6 +159,13 @@ function App() {
                 <div className="bg-red-500 text-white p-3 text-center cursor-pointer hover:bg-red-600"
                      onClick={() => setView('reminder')}>
                     ⚠️ Hai {reminderScaduti} reminder scaduti! Clicca per visualizzarli
+                </div>
+            )}
+
+            {templatesScaduti.length > 0 && (
+                <div className="bg-orange-500 text-white p-3 text-center cursor-pointer hover:bg-orange-600"
+                     onClick={() => setShowQuickReview(true)}>
+                    🔄 Hai {templatesScaduti.length} spese ricorrenti da inserire! Clicca per gestirle
                 </div>
             )}
 
@@ -221,6 +252,14 @@ function App() {
                     </button>
                 </div>
             </div>
+
+            {showQuickReview && (
+                <QuickReviewModal 
+                    templates={templatesScaduti}
+                    onClose={() => setShowQuickReview(false)}
+                    categorie={categorie}
+                />
+            )}
         </div>
     );
 }

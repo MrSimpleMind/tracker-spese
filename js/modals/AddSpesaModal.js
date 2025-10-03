@@ -1,17 +1,37 @@
-function AddSpesaModal({ onClose, categorie }) {
-    const [descrizione, setDescrizione] = React.useState('');
-    const [importo, setImporto] = React.useState('');
-    const [categoria, setCategoria] = React.useState('');
-    const [data, setData] = React.useState(new Date().toISOString().split('T')[0]);
-    const [nota, setNota] = React.useState('');
+function AddSpesaModal({ onClose, categorie, fromTemplate = null }) {
+    const [descrizione, setDescrizione] = React.useState(fromTemplate?.descrizione || '');
+    const [importo, setImporto] = React.useState(fromTemplate?.importoStimato || '');
+    const [categoria, setCategoria] = React.useState(fromTemplate?.categoria || '');
+    const [data, setData] = React.useState(fromTemplate?.prossimaScadenza || new Date().toISOString().split('T')[0]);
+    const [nota, setNota] = React.useState(fromTemplate?.nota || '');
     const [loading, setLoading] = React.useState(false);
+    const [templateId] = React.useState(fromTemplate?.id || null);
+
+    const calcolaProssimaScadenza = () => {
+        if (!fromTemplate) return null;
+        
+        const oggi = new Date();
+        
+        if (fromTemplate.frequenza === 'mensile') {
+            let prossimaData = new Date(oggi.getFullYear(), oggi.getMonth() + 1, fromTemplate.giornoMese);
+            
+            if (prossimaData.getDate() !== parseInt(fromTemplate.giornoMese)) {
+                prossimaData = new Date(prossimaData.getFullYear(), prossimaData.getMonth() + 1, 0);
+            }
+            
+            return prossimaData.toISOString().split('T')[0];
+        } else {
+            let prossimaData = new Date(oggi.getFullYear() + 1, fromTemplate.meseAnno - 1, fromTemplate.giornoAnno);
+            return prossimaData.toISOString().split('T')[0];
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
 
         try {
-            await db.collection('spese').add({
+            const spesaData = {
                 descrizione,
                 importo: parseFloat(importo),
                 categoria,
@@ -19,7 +39,25 @@ function AddSpesaModal({ onClose, categorie }) {
                 nota,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 userId: auth.currentUser.uid
-            });
+            };
+            
+            // Se viene da template, aggiungi flag
+            if (templateId) {
+                spesaData.isRicorrente = true;
+                spesaData.templateId = templateId;
+            }
+
+            await db.collection('spese').add(spesaData);
+            
+            // Se viene da template, aggiorna la prossima scadenza
+            if (templateId) {
+                const prossimaScadenza = calcolaProssimaScadenza();
+                await db.collection('template_ricorrenti').doc(templateId).update({
+                    prossimaScadenza: prossimaScadenza,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+            
             onClose();
         } catch (err) {
             alert('Errore: ' + err.message);
@@ -32,7 +70,12 @@ function AddSpesaModal({ onClose, categorie }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
                 <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Nuova Spesa</h2>
+                    <div>
+                        <h2 className="text-xl font-bold">{fromTemplate ? '🔄 Spesa da Template' : 'Nuova Spesa'}</h2>
+                        {fromTemplate && (
+                            <p className="text-xs text-orange-600 mt-1">⚠️ Template: {fromTemplate.descrizione}</p>
+                        )}
+                    </div>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
                 </div>
 
