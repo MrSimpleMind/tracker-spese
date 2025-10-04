@@ -147,12 +147,22 @@ function App() {
             <div className="bg-blue-600 text-white p-3 sticky top-0 z-10 shadow-lg">
                 <div className="flex justify-between items-center">
                     <span className="text-sm truncate flex-1 mr-2">{user.email}</span>
-                    <button 
-                        onClick={() => auth.signOut()}
-                        className="bg-blue-700 px-4 py-2 rounded text-sm hover:bg-blue-800 whitespace-nowrap"
-                    >
-                        Esci
-                    </button>
+                    <div className="flex gap-2">
+                        {user.email === 'monzalcolica@gmail.com' && (
+                            <button 
+                                onClick={() => setView('admin')}
+                                className={`px-4 py-2 rounded text-sm whitespace-nowrap ${view === 'admin' ? 'bg-blue-800' : 'bg-blue-700 hover:bg-blue-800'}`}
+                            >
+                                🛡️ Admin
+                            </button>
+                        )}
+                        <button 
+                            onClick={() => auth.signOut()}
+                            className="bg-blue-700 px-4 py-2 rounded text-sm hover:bg-blue-800 whitespace-nowrap"
+                        >
+                            Esci
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -198,6 +208,13 @@ function App() {
                     />
                 )}
                 
+                {view === 'accumuli' && (
+                    <AccumuliView 
+                        transactions={transactions}
+                        categorie={categorie}
+                    />
+                )}
+                
                 {view === 'reminder' && (
                     <ReminderView 
                         reminders={reminders}
@@ -238,6 +255,14 @@ function App() {
                     </button>
                     
                     <button 
+                        onClick={() => setView('accumuli')}
+                        className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'accumuli' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                    >
+                        <span className="text-2xl">🏦</span>
+                        <span className="text-xs mt-1">Accumuli</span>
+                    </button>
+                    
+                    <button 
                         onClick={() => setView('reminder')}
                         className={`flex flex-col items-center p-2 rounded flex-1 relative ${view === 'reminder' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
                     >
@@ -257,16 +282,6 @@ function App() {
                         <span className="text-2xl">📊</span>
                         <span className="text-xs mt-1">Analytics</span>
                     </button>
-                    
-                    {user.email === 'monzalcolica@gmail.com' && (
-                        <button 
-                            onClick={() => setView('admin')}
-                            className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'admin' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
-                        >
-                            <span className="text-2xl">🛡️</span>
-                            <span className="text-xs mt-1">Admin</span>
-                        </button>
-                    )}
                 </div>
             </div>
 
