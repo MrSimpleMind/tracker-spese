@@ -1,4 +1,5 @@
 function AddTemplateModal({ onClose, categorie }) {
+    const [tipo, setTipo] = React.useState('spesa');
     const [descrizione, setDescrizione] = React.useState('');
     const [importoStimato, setImportoStimato] = React.useState('');
     const [categoria, setCategoria] = React.useState('');
@@ -11,44 +12,48 @@ function AddTemplateModal({ onClose, categorie }) {
     const [usaPrimaScadenzaManuale, setUsaPrimaScadenzaManuale] = React.useState(false);
     const [loading, setLoading] = React.useState(false);
 
+    // Filtra categorie in base al tipo selezionato
+    const categorieDisponibili = categorie.filter(cat => 
+        cat.applicabileA && cat.applicabileA.includes(tipo)
+    );
+
+    // Se cambio tipo e la categoria attuale non è valida, resetta
+    React.useEffect(() => {
+        if (categoria && !categorieDisponibili.find(c => c.nome === categoria)) {
+            setCategoria('');
+        }
+    }, [tipo, categoria, categorieDisponibili]);
+
     const calcolaProssimaScadenza = () => {
         const oggi = new Date();
         
         if (frequenza === 'mensile') {
             let prossimaData = new Date(oggi.getFullYear(), oggi.getMonth(), giornoMese);
             
-            // Se la data è già passata questo mese, passa al mese prossimo
             if (prossimaData < oggi) {
                 prossimaData = new Date(oggi.getFullYear(), oggi.getMonth() + 1, giornoMese);
             }
             
-            // Gestione giorni "difficili" (es. 31 in mesi con 30 giorni)
-            // Impostiamo l'ultimo giorno del mese se il giorno non esiste
             if (prossimaData.getDate() !== parseInt(giornoMese)) {
                 prossimaData = new Date(prossimaData.getFullYear(), prossimaData.getMonth() + 1, 0);
             }
             
             return prossimaData.toISOString().split('T')[0];
         } else if (frequenza === 'bimestrale') {
-            // Bimestrale: ogni 2 mesi
             let prossimaData = new Date(oggi.getFullYear(), oggi.getMonth(), giornoMese);
             
-            // Se la data è già passata questo mese, passa fra 2 mesi
             if (prossimaData < oggi) {
                 prossimaData = new Date(oggi.getFullYear(), oggi.getMonth() + 2, giornoMese);
             }
             
-            // Gestione giorni "difficili"
             if (prossimaData.getDate() !== parseInt(giornoMese)) {
                 prossimaData = new Date(prossimaData.getFullYear(), prossimaData.getMonth() + 1, 0);
             }
             
             return prossimaData.toISOString().split('T')[0];
         } else {
-            // Annuale
             let prossimaData = new Date(oggi.getFullYear(), meseAnno - 1, giornoAnno);
             
-            // Se la data è già passata quest'anno, passa all'anno prossimo
             if (prossimaData < oggi) {
                 prossimaData = new Date(oggi.getFullYear() + 1, meseAnno - 1, giornoAnno);
             }
@@ -62,12 +67,12 @@ function AddTemplateModal({ onClose, categorie }) {
         setLoading(true);
 
         try {
-            // Se l'utente ha scelto una prima scadenza manuale, usa quella, altrimenti calcola
             const prossimaScadenza = usaPrimaScadenzaManuale && primaScadenzaManuale 
                 ? primaScadenzaManuale 
                 : calcolaProssimaScadenza();
             
             const templateData = {
+                tipo,
                 descrizione,
                 importoStimato: parseFloat(importoStimato),
                 categoria,
@@ -101,6 +106,12 @@ function AddTemplateModal({ onClose, categorie }) {
         'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
     ];
 
+    const tipoConfig = {
+        spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
+        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
+        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60]">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -110,6 +121,28 @@ function AddTemplateModal({ onClose, categorie }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                    {/* Selezione Tipo */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {Object.entries(tipoConfig).map(([key, conf]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setTipo(key)}
+                                    className={`py-3 px-4 rounded-lg text-sm font-medium border-2 transition ${
+                                        tipo === key 
+                                            ? `${conf.borderColor} ${conf.bgColor} ${conf.color}` 
+                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <span className="text-2xl block mb-1">{conf.icon}</span>
+                                    {conf.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione *</label>
                         <input
@@ -118,7 +151,11 @@ function AddTemplateModal({ onClose, categorie }) {
                             onChange={(e) => setDescrizione(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
-                            placeholder="Es: Affitto, Netflix, Bolletta luce..."
+                            placeholder={
+                                tipo === 'spesa' ? 'Es: Affitto, Netflix...' :
+                                tipo === 'entrata' ? 'Es: Stipendio, Freelance...' :
+                                'Es: Fondo emergenza, Risparmio...'
+                            }
                         />
                     </div>
 
@@ -133,7 +170,7 @@ function AddTemplateModal({ onClose, categorie }) {
                             required
                             placeholder="0.00"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Potrai modificarlo quando inserisci la spesa</p>
+                        <p className="text-xs text-gray-500 mt-1">Potrai modificarlo quando inserisci la transazione</p>
                     </div>
 
                     <div>
@@ -145,12 +182,17 @@ function AddTemplateModal({ onClose, categorie }) {
                             required
                         >
                             <option value="">Seleziona categoria</option>
-                            {categorie.map(cat => (
+                            {categorieDisponibili.map(cat => (
                                 <option key={cat.id} value={cat.nome}>
                                     {cat.nome}
                                 </option>
                             ))}
                         </select>
+                        {categorieDisponibili.length === 0 && (
+                            <p className="text-xs text-orange-600 mt-1">
+                                ⚠️ Nessuna categoria disponibile per questo tipo. Creane una nella sezione Categorie!
+                            </p>
+                        )}
                     </div>
 
                     <div className="border-t pt-4">

@@ -1,21 +1,21 @@
 function DettaglioTemplateModal({ template, onClose }) {
-    const [spese, setSpese] = React.useState([]);
+    const [transactions, setTransactions] = React.useState([]);
     const [loading, setLoading] = React.useState(true);
 
     React.useEffect(() => {
-        // Carica le spese collegate a questo template
-        const unsubscribe = db.collection('spese')
+        // Carica le transazioni collegate a questo template
+        const unsubscribe = db.collection('transactions')
             .where('templateId', '==', template.id)
             .onSnapshot(
                 snapshot => {
-                    const speseData = snapshot.docs.map(doc => ({
+                    const transactionsData = snapshot.docs.map(doc => ({
                         id: doc.id,
                         ...doc.data()
                     }));
                     // Ordina lato client per data (più recente prima) e limita a 12
-                    speseData.sort((a, b) => new Date(b.data) - new Date(a.data));
-                    const speseLimitate = speseData.slice(0, 12);
-                    setSpese(speseLimitate);
+                    transactionsData.sort((a, b) => new Date(b.data) - new Date(a.data));
+                    const transactionsLimitate = transactionsData.slice(0, 12);
+                    setTransactions(transactionsLimitate);
                     setLoading(false);
                 },
                 error => {
@@ -27,19 +27,19 @@ function DettaglioTemplateModal({ template, onClose }) {
         return unsubscribe;
     }, [template.id]);
 
-    // Calcola i mesi mancanti (saltati)
+    // Calcola i mesi mancanti (saltati) - solo per template mensili
     const getMesiMancanti = () => {
-        if (spese.length === 0 || template.frequenza !== 'mensile') return [];
+        if (transactions.length === 0 || template.frequenza !== 'mensile') return [];
         
-        const mesiInseriti = spese.map(s => {
-            const data = new Date(s.data);
+        const mesiInseriti = transactions.map(t => {
+            const data = new Date(t.data);
             return `${data.getFullYear()}-${data.getMonth()}`;
         });
         
         const mesiMancanti = [];
         const oggi = new Date();
-        const ultimaSpesa = spese[spese.length - 1];
-        const dataInizio = ultimaSpesa ? new Date(ultimaSpesa.data) : oggi;
+        const ultimaTransaction = transactions[transactions.length - 1];
+        const dataInizio = ultimaTransaction ? new Date(ultimaTransaction.data) : oggi;
         
         // Controlla gli ultimi 6 mesi
         for (let i = 0; i < 6; i++) {
@@ -59,11 +59,13 @@ function DettaglioTemplateModal({ template, onClose }) {
 
     const mesiMancanti = getMesiMancanti();
 
-    const navigateToSpesa = (spesaId) => {
-        // Chiudi modale e scrollа alla spesa (da implementare)
-        onClose();
-        // TODO: highlight spesa nella lista
+    const tipoConfig = {
+        spesa: { label: 'Spesa', icon: '💸', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
+        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-700', bg: 'bg-blue-50', border: 'border-blue-200' }
     };
+
+    const config = tipoConfig[template.tipo || 'spesa'];
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60]">
@@ -75,15 +77,19 @@ function DettaglioTemplateModal({ template, onClose }) {
 
                 <div className="p-4">
                     {/* Info Template */}
-                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 mb-4 shadow-lg">
-                        <p className="text-2xl font-bold mb-1">{template.descrizione}</p>
-                        <p className="text-3xl font-bold mb-2">€ {parseFloat(template.importoStimato).toFixed(2)}</p>
-                        <p className="text-sm opacity-90">{template.categoria}</p>
+                    <div className={`bg-gradient-to-r ${config.bg} ${config.border} border-2 rounded-lg p-4 mb-4 shadow-lg`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-2xl">{config.icon}</span>
+                            <span className={`text-sm font-medium ${config.color}`}>{config.label}</span>
+                        </div>
+                        <p className="text-2xl font-bold mb-1 text-gray-800">{template.descrizione}</p>
+                        <p className={`text-3xl font-bold mb-2 ${config.color}`}>€ {parseFloat(template.importoStimato).toFixed(2)}</p>
+                        <p className="text-sm text-gray-700">{template.categoria}</p>
                         
-                        <div className="border-t border-blue-500 pt-3 mt-3">
+                        <div className="border-t border-gray-300 pt-3 mt-3">
                             <div className="flex justify-between text-sm">
-                                <span className="opacity-75">Frequenza:</span>
-                                <span className="font-medium">
+                                <span className="text-gray-600">Frequenza:</span>
+                                <span className="font-medium text-gray-800">
                                     {template.frequenza === 'mensile' 
                                         ? `Mensile (giorno ${template.giornoMese})` 
                                         : template.frequenza === 'bimestrale'
@@ -93,17 +99,17 @@ function DettaglioTemplateModal({ template, onClose }) {
                                 </span>
                             </div>
                             <div className="flex justify-between text-sm mt-2">
-                                <span className="opacity-75">Prossima scadenza:</span>
-                                <span className="font-medium">
+                                <span className="text-gray-600">Prossima scadenza:</span>
+                                <span className="font-medium text-gray-800">
                                     {new Date(template.prossimaScadenza).toLocaleDateString('it-IT')}
                                 </span>
                             </div>
                         </div>
                         
                         {template.nota && (
-                            <div className="border-t border-blue-500 pt-3 mt-3">
-                                <p className="text-sm opacity-75">Nota:</p>
-                                <p className="text-sm mt-1">{template.nota}</p>
+                            <div className="border-t border-gray-300 pt-3 mt-3">
+                                <p className="text-sm text-gray-600">Nota:</p>
+                                <p className="text-sm mt-1 text-gray-800">{template.nota}</p>
                             </div>
                         )}
                     </div>
@@ -123,35 +129,34 @@ function DettaglioTemplateModal({ template, onClose }) {
                             </div>
                         ) : (
                             <>
-                                {spese.length === 0 && mesiMancanti.length === 0 ? (
+                                {transactions.length === 0 && mesiMancanti.length === 0 ? (
                                     <div className="text-center py-8 text-gray-400">
                                         <p className="text-3xl mb-2">📭</p>
-                                        <p>Nessuna spesa inserita ancora</p>
+                                        <p>Nessuna transazione inserita ancora</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        {/* Mescola spese e mesi mancanti in ordine cronologico */}
-                                        {spese.map(spesa => (
-                                            <div key={spesa.id} className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                        {transactions.map(transaction => (
+                                            <div key={transaction.id} className={`${config.bg} border ${config.border} rounded-lg p-3`}>
                                                 <div className="flex justify-between items-start mb-1">
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-green-600">✅</span>
+                                                            <span className={config.color}>✅</span>
                                                             <p className="font-medium text-gray-800">
-                                                                {new Date(spesa.data).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
+                                                                {new Date(transaction.data).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })}
                                                             </p>
                                                         </div>
                                                         <p className="text-xs text-gray-500 mt-1">
-                                                            Inserita il {new Date(spesa.data).toLocaleDateString('it-IT')}
+                                                            Inserita il {new Date(transaction.data).toLocaleDateString('it-IT')}
                                                         </p>
                                                     </div>
-                                                    <p className="text-lg font-bold text-green-700">
-                                                        € {parseFloat(spesa.importo).toFixed(2)}
+                                                    <p className={`text-lg font-bold ${config.color}`}>
+                                                        € {parseFloat(transaction.importo).toFixed(2)}
                                                     </p>
                                                 </div>
-                                                {spesa.nota && (
+                                                {transaction.nota && (
                                                     <p className="text-xs text-gray-600 mt-2 pl-6">
-                                                        📝 {spesa.nota}
+                                                        📝 {transaction.nota}
                                                     </p>
                                                 )}
                                             </div>
@@ -169,22 +174,22 @@ function DettaglioTemplateModal({ template, onClose }) {
                                     </div>
                                 )}
 
-                                {spese.length > 0 && (
+                                {transactions.length > 0 && (
                                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-blue-900 font-medium">Totale spese:</span>
-                                            <span className="text-blue-900 font-bold">{spese.length}</span>
+                                            <span className="text-blue-900 font-medium">Totale transazioni:</span>
+                                            <span className="text-blue-900 font-bold">{transactions.length}</span>
                                         </div>
                                         <div className="flex justify-between text-sm mt-1">
                                             <span className="text-blue-900 font-medium">Somma totale:</span>
                                             <span className="text-blue-900 font-bold">
-                                                € {spese.reduce((acc, s) => acc + parseFloat(s.importo), 0).toFixed(2)}
+                                                € {transactions.reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between text-sm mt-1">
                                             <span className="text-blue-900 font-medium">Media importo:</span>
                                             <span className="text-blue-900 font-bold">
-                                                € {(spese.reduce((acc, s) => acc + parseFloat(s.importo), 0) / spese.length).toFixed(2)}
+                                                € {(transactions.reduce((acc, t) => acc + parseFloat(t.importo), 0) / transactions.length).toFixed(2)}
                                             </span>
                                         </div>
                                     </div>

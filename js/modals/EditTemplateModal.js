@@ -1,4 +1,5 @@
 function EditTemplateModal({ template, onClose, categorie }) {
+    const [tipo, setTipo] = React.useState(template.tipo || 'spesa');
     const [descrizione, setDescrizione] = React.useState(template.descrizione);
     const [importoStimato, setImportoStimato] = React.useState(template.importoStimato);
     const [categoria, setCategoria] = React.useState(template.categoria);
@@ -8,6 +9,18 @@ function EditTemplateModal({ template, onClose, categorie }) {
     const [giornoAnno, setGiornoAnno] = React.useState(template.giornoAnno || 1);
     const [meseAnno, setMeseAnno] = React.useState(template.meseAnno || 1);
     const [loading, setLoading] = React.useState(false);
+
+    // Filtra categorie in base al tipo selezionato
+    const categorieDisponibili = categorie.filter(cat => 
+        cat.applicabileA && cat.applicabileA.includes(tipo)
+    );
+
+    // Se cambio tipo e la categoria attuale non è valida, resetta
+    React.useEffect(() => {
+        if (categoria && !categorieDisponibili.find(c => c.nome === categoria)) {
+            setCategoria('');
+        }
+    }, [tipo, categoria, categorieDisponibili]);
 
     const calcolaProssimaScadenza = () => {
         const oggi = new Date();
@@ -25,7 +38,6 @@ function EditTemplateModal({ template, onClose, categorie }) {
             
             return prossimaData.toISOString().split('T')[0];
         } else if (frequenza === 'bimestrale') {
-            // Bimestrale: ogni 2 mesi
             let prossimaData = new Date(oggi.getFullYear(), oggi.getMonth(), giornoMese);
             
             if (prossimaData < oggi) {
@@ -56,6 +68,7 @@ function EditTemplateModal({ template, onClose, categorie }) {
             const prossimaScadenza = calcolaProssimaScadenza();
             
             const updateData = {
+                tipo,
                 descrizione,
                 importoStimato: parseFloat(importoStimato),
                 categoria,
@@ -67,7 +80,6 @@ function EditTemplateModal({ template, onClose, categorie }) {
 
             if (frequenza === 'mensile' || frequenza === 'bimestrale') {
                 updateData.giornoMese = parseInt(giornoMese);
-                // Rimuovi campi annuali se cambi da annuale a mensile/bimestrale
                 await db.collection('template_ricorrenti').doc(template.id).update({
                     ...updateData,
                     giornoAnno: firebase.firestore.FieldValue.delete(),
@@ -76,7 +88,6 @@ function EditTemplateModal({ template, onClose, categorie }) {
             } else {
                 updateData.giornoAnno = parseInt(giornoAnno);
                 updateData.meseAnno = parseInt(meseAnno);
-                // Rimuovi campo mensile se cambi da mensile ad annuale
                 await db.collection('template_ricorrenti').doc(template.id).update({
                     ...updateData,
                     giornoMese: firebase.firestore.FieldValue.delete()
@@ -96,6 +107,12 @@ function EditTemplateModal({ template, onClose, categorie }) {
         'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
     ];
 
+    const tipoConfig = {
+        spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
+        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
+        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
+    };
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60]">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -105,6 +122,28 @@ function EditTemplateModal({ template, onClose, categorie }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                    {/* Selezione Tipo */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {Object.entries(tipoConfig).map(([key, conf]) => (
+                                <button
+                                    key={key}
+                                    type="button"
+                                    onClick={() => setTipo(key)}
+                                    className={`py-3 px-4 rounded-lg text-sm font-medium border-2 transition ${
+                                        tipo === key 
+                                            ? `${conf.borderColor} ${conf.bgColor} ${conf.color}` 
+                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <span className="text-2xl block mb-1">{conf.icon}</span>
+                                    {conf.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione *</label>
                         <input
@@ -136,12 +175,18 @@ function EditTemplateModal({ template, onClose, categorie }) {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
                         >
-                            {categorie.map(cat => (
+                            <option value="">Seleziona categoria</option>
+                            {categorieDisponibili.map(cat => (
                                 <option key={cat.id} value={cat.nome}>
                                     {cat.nome}
                                 </option>
                             ))}
                         </select>
+                        {categorieDisponibili.length === 0 && (
+                            <p className="text-xs text-orange-600 mt-1">
+                                ⚠️ Nessuna categoria disponibile per questo tipo
+                            </p>
+                        )}
                     </div>
 
                     <div className="border-t pt-4">

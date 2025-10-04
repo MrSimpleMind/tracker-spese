@@ -1,10 +1,25 @@
 function AddCategoriaModal({ onClose }) {
     const [nome, setNome] = React.useState('');
     const [descrizione, setDescrizione] = React.useState('');
+    const [applicabileA, setApplicabileA] = React.useState(['spesa']); // Default solo spese
     const [loading, setLoading] = React.useState(false);
+
+    const toggleApplicabilita = (tipo) => {
+        if (applicabileA.includes(tipo)) {
+            setApplicabileA(applicabileA.filter(t => t !== tipo));
+        } else {
+            setApplicabileA([...applicabileA, tipo]);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (applicabileA.length === 0) {
+            alert('Seleziona almeno un tipo di transazione per questa categoria');
+            return;
+        }
+        
         setLoading(true);
 
         try {
@@ -12,6 +27,7 @@ function AddCategoriaModal({ onClose }) {
                 nome,
                 icona: '📁',
                 descrizione,
+                applicabileA,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             onClose();
@@ -20,6 +36,12 @@ function AddCategoriaModal({ onClose }) {
         } finally {
             setLoading(false);
         }
+    };
+
+    const tipoConfig = {
+        spesa: { label: 'Spese', icon: '💸', color: 'text-red-600' },
+        entrata: { label: 'Entrate', icon: '💰', color: 'text-green-600' },
+        accumulo: { label: 'Accumuli', icon: '🏦', color: 'text-blue-600' }
     };
 
     return (
@@ -39,7 +61,7 @@ function AddCategoriaModal({ onClose }) {
                             onChange={(e) => setNome(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
-                            placeholder="Es: Alimentari, Trasporti, Casa..."
+                            placeholder="Es: Alimentari, Stipendio, Fondo vacanze..."
                         />
                     </div>
 
@@ -52,6 +74,43 @@ function AddCategoriaModal({ onClose }) {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             placeholder="Es: Spese per cibo e bevande"
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Applicabile a *
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3">
+                            Seleziona a quali tipi di transazioni si applica questa categoria
+                        </p>
+                        <div className="space-y-2">
+                            {Object.entries(tipoConfig).map(([key, conf]) => (
+                                <label 
+                                    key={key}
+                                    className={`flex items-center gap-3 p-3 border-2 rounded-lg cursor-pointer transition ${
+                                        applicabileA.includes(key) 
+                                            ? 'border-blue-500 bg-blue-50' 
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={applicabileA.includes(key)}
+                                        onChange={() => toggleApplicabilita(key)}
+                                        className="w-5 h-5 text-blue-600"
+                                    />
+                                    <span className="text-2xl">{conf.icon}</span>
+                                    <span className={`font-medium ${conf.color}`}>{conf.label}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-sm text-blue-900">
+                            💡 <strong>Esempio:</strong> "Alimentari" solo per Spese, "Stipendio" solo per Entrate, 
+                            "Fondo emergenza" solo per Accumuli, "Manutenzione auto" per Spese e Accumuli.
+                        </p>
                     </div>
 
                     <div className="flex gap-2 pt-2">

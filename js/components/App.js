@@ -1,17 +1,18 @@
 function App() {
     const [user, setUser] = React.useState(null);
     const [loading, setLoading] = React.useState(true);
-    const [view, setView] = React.useState('spese');
-    const [spese, setSpese] = React.useState([]);
+    const [view, setView] = React.useState('transactions');
+    const [transactions, setTransactions] = React.useState([]);
     const [categorie, setCategorie] = React.useState([]);
     const [reminders, setReminders] = React.useState([]);
-    const [showAddSpesa, setShowAddSpesa] = React.useState(false);
+    const [showAddTransaction, setShowAddTransaction] = React.useState(false);
     const [showAddCategoria, setShowAddCategoria] = React.useState(false);
     const [showAddReminder, setShowAddReminder] = React.useState(false);
     const [showGrafico, setShowGrafico] = React.useState(false);
-    const [editingSpesa, setEditingSpesa] = React.useState(null);
+    const [editingTransaction, setEditingTransaction] = React.useState(null);
     const [editingCategoria, setEditingCategoria] = React.useState(null);
     const [editingReminder, setEditingReminder] = React.useState(null);
+    const [filtroTipo, setFiltroTipo] = React.useState('tutte');
     const [filtroCategoria, setFiltroCategoria] = React.useState('tutte');
     const [reminderScaduti, setReminderScaduti] = React.useState(0);
     const [templatesScaduti, setTemplatesScaduti] = React.useState([]);
@@ -26,18 +27,18 @@ function App() {
         return unsubscribe;
     }, []);
 
-    // Listener Firestore - Spese
+    // Listener Firestore - Transactions
     React.useEffect(() => {
         if (!user) return;
         
-        const unsubscribe = db.collection('spese')
+        const unsubscribe = db.collection('transactions')
             .orderBy('data', 'desc')
             .onSnapshot(snapshot => {
-                const speseData = snapshot.docs.map(doc => ({
+                const transactionsData = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
-                setSpese(speseData);
+                setTransactions(transactionsData);
             });
         
         return unsubscribe;
@@ -79,7 +80,7 @@ function App() {
                 ).length;
                 setReminderScaduti(scaduti);
                 
-                // FIX iOS: Controlla se le notifiche sono supportate (iOS Safari non le supporta)
+                // FIX iOS: Controlla se le notifiche sono supportate
                 if (scaduti > 0 && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
                     try {
                         new Notification('Tracker Spese', {
@@ -165,23 +166,25 @@ function App() {
             {templatesScaduti.length > 0 && (
                 <div className="bg-orange-500 text-white p-3 text-center cursor-pointer hover:bg-orange-600"
                      onClick={() => setShowQuickReview(true)}>
-                    🔄 Hai {templatesScaduti.length} spese ricorrenti da inserire! Clicca per gestirle
+                    🔄 Hai {templatesScaduti.length} transazioni ricorrenti da inserire! Clicca per gestirle
                 </div>
             )}
 
             <div className="max-w-4xl mx-auto p-4">
-                {view === 'spese' && (
-                    <SpeseView 
-                        spese={spese}
+                {view === 'transactions' && (
+                    <TransactionsView 
+                        transactions={transactions}
                         categorie={categorie}
+                        filtroTipo={filtroTipo}
+                        setFiltroTipo={setFiltroTipo}
                         filtroCategoria={filtroCategoria}
                         setFiltroCategoria={setFiltroCategoria}
-                        showAddSpesa={showAddSpesa}
-                        setShowAddSpesa={setShowAddSpesa}
+                        showAddTransaction={showAddTransaction}
+                        setShowAddTransaction={setShowAddTransaction}
                         showGrafico={showGrafico}
                         setShowGrafico={setShowGrafico}
-                        editingSpesa={editingSpesa}
-                        setEditingSpesa={setEditingSpesa}
+                        editingTransaction={editingTransaction}
+                        setEditingTransaction={setEditingTransaction}
                     />
                 )}
                 
@@ -207,7 +210,7 @@ function App() {
                 
                 {view === 'analytics' && (
                     <AnalyticsView 
-                        spese={spese}
+                        transactions={transactions}
                     />
                 )}
                 
@@ -219,11 +222,11 @@ function App() {
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
                 <div className="flex justify-around items-center p-2">
                     <button 
-                        onClick={() => setView('spese')}
-                        className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'spese' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
+                        onClick={() => setView('transactions')}
+                        className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'transactions' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
                     >
                         <span className="text-2xl">💳</span>
-                        <span className="text-xs mt-1">Spese</span>
+                        <span className="text-xs mt-1">Finanze</span>
                     </button>
                     
                     <button 

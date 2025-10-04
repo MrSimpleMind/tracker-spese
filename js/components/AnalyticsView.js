@@ -1,59 +1,66 @@
-function AnalyticsView({ spese }) {
+function AnalyticsView({ transactions }) {
     const [periodoFiltro, setPeriodoFiltro] = React.useState('sempre');
     
-    // Filtra spese per periodo
-    const speseFiltrate = React.useMemo(() => {
+    // Filtra transazioni per periodo
+    const transactionsFiltrate = React.useMemo(() => {
         const oggi = new Date();
         
         switch (periodoFiltro) {
             case 'mese':
                 const inizioMese = new Date(oggi.getFullYear(), oggi.getMonth(), 1);
-                return spese.filter(s => new Date(s.data) >= inizioMese);
+                return transactions.filter(t => new Date(t.data) >= inizioMese);
             
             case 'tre-mesi':
                 const inizioTreMesi = new Date(oggi.getFullYear(), oggi.getMonth() - 2, 1);
-                return spese.filter(s => new Date(s.data) >= inizioTreMesi);
+                return transactions.filter(t => new Date(t.data) >= inizioTreMesi);
             
             case 'anno':
                 const inizioAnno = new Date(oggi.getFullYear(), 0, 1);
-                return spese.filter(s => new Date(s.data) >= inizioAnno);
+                return transactions.filter(t => new Date(t.data) >= inizioAnno);
             
             case 'sempre':
             default:
-                return spese;
+                return transactions;
         }
-    }, [spese, periodoFiltro]);
+    }, [transactions, periodoFiltro]);
+
+    // Separa per tipo
+    const spese = transactionsFiltrate.filter(t => t.tipo === 'spesa');
+    const entrate = transactionsFiltrate.filter(t => t.tipo === 'entrata');
+    const accumuli = transactionsFiltrate.filter(t => t.tipo === 'accumulo');
 
     // CALCOLI ANALYTICS
     
-    // 1. Spesa Media Giornaliera
-    const spesaMediaGiornaliera = React.useMemo(() => {
-        if (speseFiltrate.length === 0) return 0;
+    // 1. Cash Flow Medio Mensile
+    const cashFlowMedioMensile = React.useMemo(() => {
+        if (transactionsFiltrate.length === 0) return 0;
         
-        const totale = speseFiltrate.reduce((acc, s) => acc + parseFloat(s.importo), 0);
+        const totaleEntrate = entrate.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        const totaleSpese = spese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
         
-        // Calcola giorni del periodo
-        let giorni = 1;
-        if (speseFiltrate.length > 0) {
-            const date = speseFiltrate.map(s => new Date(s.data));
+        // Calcola mesi del periodo
+        let mesi = 1;
+        if (transactionsFiltrate.length > 0) {
+            const date = transactionsFiltrate.map(t => new Date(t.data));
             const dataMin = new Date(Math.min(...date));
             const dataMax = new Date(Math.max(...date));
-            giorni = Math.max(1, Math.ceil((dataMax - dataMin) / (1000 * 60 * 60 * 24)) + 1);
+            mesi = Math.max(1, Math.ceil((dataMax - dataMin) / (1000 * 60 * 60 * 24 * 30)));
         }
         
-        return totale / giorni;
-    }, [speseFiltrate]);
+        const cashFlow = totaleEntrate - totaleSpese;
+        return cashFlow / mesi;
+    }, [transactionsFiltrate, entrate, spese]);
 
-    // 2. Top Categoria
-    const topCategoria = React.useMemo(() => {
-        if (speseFiltrate.length === 0) return null;
+    // 2. Top Categoria Spese
+    const topCategoriaSpese = React.useMemo(() => {
+        if (spese.length === 0) return null;
         
         const totalePerCategoria = {};
         let totaleComplessivo = 0;
         
-        speseFiltrate.forEach(s => {
-            const importo = parseFloat(s.importo);
-            totalePerCategoria[s.categoria] = (totalePerCategoria[s.categoria] || 0) + importo;
+        spese.forEach(t => {
+            const importo = parseFloat(t.importo);
+            totalePerCategoria[t.categoria] = (totalePerCategoria[t.categoria] || 0) + importo;
             totaleComplessivo += importo;
         });
         
@@ -68,88 +75,49 @@ function AnalyticsView({ spese }) {
             totale: categoriaMax.totale,
             percentuale: percentuale
         };
-    }, [speseFiltrate]);
-
-    // 3. Trend vs Media (confronto mese corrente con media storica)
-    const trendVsMedia = React.useMemo(() => {
-        if (spese.length === 0) return null;
-        
-        const oggi = new Date();
-        const meseCorrente = oggi.getMonth();
-        const annoCorrente = oggi.getFullYear();
-        
-        // Spese mese corrente
-        const speseQuestoMese = spese.filter(s => {
-            const data = new Date(s.data);
-            return data.getMonth() === meseCorrente && data.getFullYear() === annoCorrente;
-        });
-        const totaleQuestoMese = speseQuestoMese.reduce((acc, s) => acc + parseFloat(s.importo), 0);
-        
-        // Calcola media dei mesi precedenti
-        const mesiPrecedenti = {};
-        spese.forEach(s => {
-            const data = new Date(s.data);
-            const chiaveMese = `${data.getFullYear()}-${data.getMonth()}`;
-            const chiaveMeseCorrente = `${annoCorrente}-${meseCorrente}`;
-            
-            // Escludi mese corrente
-            if (chiaveMese !== chiaveMeseCorrente) {
-                mesiPrecedenti[chiaveMese] = (mesiPrecedenti[chiaveMese] || 0) + parseFloat(s.importo);
-            }
-        });
-        
-        const valoriMesi = Object.values(mesiPrecedenti);
-        const mediaMesi = valoriMesi.length > 0 
-            ? valoriMesi.reduce((a, b) => a + b, 0) / valoriMesi.length 
-            : totaleQuestoMese;
-        
-        const differenza = totaleQuestoMese - mediaMesi;
-        const percentuale = mediaMesi > 0 ? (differenza / mediaMesi * 100) : 0;
-        
-        return {
-            meseCorrente: totaleQuestoMese,
-            media: mediaMesi,
-            differenza: differenza,
-            percentuale: percentuale
-        };
     }, [spese]);
 
-    // 4. Micro-Spese (piccoli importi invisibili)
-    const microSpese = React.useMemo(() => {
-        const soglia = 20; // Soglia per "piccole spese"
-        const microSpeseList = speseFiltrate.filter(s => parseFloat(s.importo) < soglia);
-        const totale = microSpeseList.reduce((acc, s) => acc + parseFloat(s.importo), 0);
-        const percentuale = speseFiltrate.length > 0 
-            ? (microSpeseList.length / speseFiltrate.length * 100) 
-            : 0;
+    // 3. Tasso di Risparmio (Accumuli / Entrate)
+    const tassoRisparmio = React.useMemo(() => {
+        const totaleEntrate = entrate.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        const totaleAccumuli = accumuli.reduce((acc, t) => acc + parseFloat(t.importo), 0);
         
-        // Proiezione annuale (solo se non stiamo già guardando "sempre")
-        let proiezioneAnnuale = totale;
-        if (periodoFiltro !== 'sempre' && microSpeseList.length > 0) {
-            const giorniPeriodo = (() => {
-                switch (periodoFiltro) {
-                    case 'mese': return 30;
-                    case 'tre-mesi': return 90;
-                    case 'anno': return 365;
-                    default: return 30;
-                }
-            })();
-            proiezioneAnnuale = (totale / giorniPeriodo) * 365;
+        if (totaleEntrate === 0) return 0;
+        return (totaleAccumuli / totaleEntrate * 100);
+    }, [entrate, accumuli]);
+
+    // 4. Patrimonio Accumulato (somma accumuli)
+    const patrimonioAccumulato = React.useMemo(() => {
+        return accumuli.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+    }, [accumuli]);
+
+    // 5. Runway (quanto duri con accumuli al ritmo spese medio)
+    const runway = React.useMemo(() => {
+        if (spese.length === 0) return 0;
+        
+        const totaleAccumuli = accumuli.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        const totaleSpese = spese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        
+        // Calcola giorni del periodo
+        let giorni = 1;
+        if (spese.length > 0) {
+            const date = spese.map(t => new Date(t.data));
+            const dataMin = new Date(Math.min(...date));
+            const dataMax = new Date(Math.max(...date));
+            giorni = Math.max(1, Math.ceil((dataMax - dataMin) / (1000 * 60 * 60 * 24)) + 1);
         }
         
-        return {
-            numero: microSpeseList.length,
-            totale: totale,
-            percentuale: percentuale,
-            proiezioneAnnuale: proiezioneAnnuale
-        };
-    }, [speseFiltrate, periodoFiltro]);
+        const spesaMediaGiornaliera = totaleSpese / giorni;
+        
+        if (spesaMediaGiornaliera === 0) return 0;
+        return totaleAccumuli / spesaMediaGiornaliera; // giorni di runway
+    }, [spese, accumuli]);
 
     return (
         <div className="fade-in">
             <div className="mb-4">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">Analytics</h2>
-                <p className="text-gray-600 text-sm">Analisi dettagliata delle tue spese</p>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Analytics Finanziarie</h2>
+                <p className="text-gray-600 text-sm">Analisi dettagliata delle tue finanze</p>
             </div>
 
             {/* Filtro Periodo */}
@@ -185,86 +153,106 @@ function AnalyticsView({ spese }) {
                 </div>
             </div>
 
-            {speseFiltrate.length === 0 ? (
+            {transactionsFiltrate.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                     <p className="text-4xl mb-2">📊</p>
-                    <p>Nessuna spesa registrata in questo periodo</p>
+                    <p>Nessuna transazione registrata in questo periodo</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Card 1: Spesa Media Giornaliera */}
-                    <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-5 shadow-lg">
-                        <div className="flex items-center mb-3">
-                            <span className="text-3xl mr-3">💰</span>
-                            <h3 className="text-lg font-semibold">Spesa Media/Giorno</h3>
+                <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                            <p className="text-xs text-green-700 font-medium mb-1">💰 Entrate Totali</p>
+                            <p className="text-3xl font-bold text-green-700">
+                                € {entrate.reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
+                            </p>
+                            <p className="text-xs text-green-600 mt-1">{entrate.length} transazioni</p>
                         </div>
-                        <p className="text-4xl font-bold mb-2">€ {spesaMediaGiornaliera.toFixed(2)}</p>
-                        <p className="text-sm opacity-90">
-                            {speseFiltrate.length} spese analizzate
-                        </p>
+                        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <p className="text-xs text-red-700 font-medium mb-1">💸 Spese Totali</p>
+                            <p className="text-3xl font-bold text-red-700">
+                                € {spese.reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
+                            </p>
+                            <p className="text-xs text-red-600 mt-1">{spese.length} transazioni</p>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-xs text-blue-700 font-medium mb-1">🏦 Accumuli Totali</p>
+                            <p className="text-3xl font-bold text-blue-700">
+                                € {patrimonioAccumulato.toFixed(2)}
+                            </p>
+                            <p className="text-xs text-blue-600 mt-1">{accumuli.length} transazioni</p>
+                        </div>
                     </div>
 
-                    {/* Card 2: Top Categoria */}
-                    {topCategoria && (
-                        <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-5 shadow-lg">
+                    {/* Analytics Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Card 1: Cash Flow Medio Mensile */}
+                        <div className={`bg-gradient-to-br ${cashFlowMedioMensile >= 0 ? 'from-green-500 to-green-600' : 'from-red-500 to-red-600'} text-white rounded-lg p-5 shadow-lg`}>
                             <div className="flex items-center mb-3">
-                                <span className="text-3xl mr-3">📊</span>
-                                <h3 className="text-lg font-semibold">Top Categoria</h3>
-                            </div>
-                            <p className="text-2xl font-bold mb-1">{topCategoria.nome}</p>
-                            <p className="text-3xl font-bold mb-2">€ {topCategoria.totale.toFixed(2)}</p>
-                            <div className="bg-white bg-opacity-20 rounded-full h-2 mb-2">
-                                <div 
-                                    className="bg-white h-2 rounded-full transition-all duration-500"
-                                    style={{ width: `${topCategoria.percentuale}%` }}
-                                ></div>
-                            </div>
-                            <p className="text-sm opacity-90">
-                                {topCategoria.percentuale.toFixed(1)}% del totale
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Card 3: Trend vs Media */}
-                    {trendVsMedia && (
-                        <div className={`bg-gradient-to-br ${trendVsMedia.differenza >= 0 ? 'from-red-500 to-red-600' : 'from-green-500 to-green-600'} text-white rounded-lg p-5 shadow-lg`}>
-                            <div className="flex items-center mb-3">
-                                <span className="text-3xl mr-3">📈</span>
-                                <h3 className="text-lg font-semibold">Trend Mese Corrente</h3>
+                                <span className="text-3xl mr-3">💵</span>
+                                <h3 className="text-lg font-semibold">Cash Flow Medio/Mese</h3>
                             </div>
                             <p className="text-4xl font-bold mb-2">
-                                {trendVsMedia.differenza >= 0 ? '↑' : '↓'} {Math.abs(trendVsMedia.percentuale).toFixed(1)}%
-                            </p>
-                            <p className="text-sm opacity-90 mb-1">
-                                Questo mese: € {trendVsMedia.meseCorrente.toFixed(2)}
+                                {cashFlowMedioMensile >= 0 ? '+' : ''}€ {cashFlowMedioMensile.toFixed(2)}
                             </p>
                             <p className="text-sm opacity-90">
-                                Media storica: € {trendVsMedia.media.toFixed(2)}
+                                Entrate - Spese (accumuli neutrali)
                             </p>
                         </div>
-                    )}
 
-                    {/* Card 4: Micro-Spese */}
-                    <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg p-5 shadow-lg">
-                        <div className="flex items-center mb-3">
-                            <span className="text-3xl mr-3">🔍</span>
-                            <h3 className="text-lg font-semibold">Micro-Spese</h3>
+                        {/* Card 2: Top Categoria Spese */}
+                        {topCategoriaSpese && (
+                            <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-lg p-5 shadow-lg">
+                                <div className="flex items-center mb-3">
+                                    <span className="text-3xl mr-3">📊</span>
+                                    <h3 className="text-lg font-semibold">Top Categoria Spese</h3>
+                                </div>
+                                <p className="text-2xl font-bold mb-1">{topCategoriaSpese.nome}</p>
+                                <p className="text-3xl font-bold mb-2">€ {topCategoriaSpese.totale.toFixed(2)}</p>
+                                <div className="bg-white bg-opacity-20 rounded-full h-2 mb-2">
+                                    <div 
+                                        className="bg-white h-2 rounded-full transition-all duration-500"
+                                        style={{ width: `${topCategoriaSpese.percentuale}%` }}
+                                    ></div>
+                                </div>
+                                <p className="text-sm opacity-90">
+                                    {topCategoriaSpese.percentuale.toFixed(1)}% delle spese totali
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Card 3: Tasso di Risparmio */}
+                        <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-lg p-5 shadow-lg">
+                            <div className="flex items-center mb-3">
+                                <span className="text-3xl mr-3">🎯</span>
+                                <h3 className="text-lg font-semibold">Tasso di Risparmio</h3>
+                            </div>
+                            <p className="text-4xl font-bold mb-2">{tassoRisparmio.toFixed(1)}%</p>
+                            <p className="text-sm opacity-90 mb-1">
+                                Accumuli: € {patrimonioAccumulato.toFixed(2)}
+                            </p>
+                            <p className="text-sm opacity-90">
+                                su Entrate: € {entrate.reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
+                            </p>
                         </div>
-                        <p className="text-sm opacity-90 mb-2">
-                            {microSpese.numero} spese &lt; €20
-                        </p>
-                        <p className="text-4xl font-bold mb-2">€ {microSpese.totale.toFixed(2)}</p>
-                        <p className="text-sm opacity-90 mb-1">
-                            {microSpese.percentuale.toFixed(0)}% delle tue spese
-                        </p>
-                        {periodoFiltro !== 'sempre' && (
-                            <div className="mt-3 pt-3 border-t border-white border-opacity-30">
-                                <p className="text-xs opacity-75">Proiezione annuale:</p>
-                                <p className="text-2xl font-bold">€ {microSpese.proiezioneAnnuale.toFixed(0)}/anno</p>
+
+                        {/* Card 4: Runway */}
+                        {runway > 0 && (
+                            <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-lg p-5 shadow-lg">
+                                <div className="flex items-center mb-3">
+                                    <span className="text-3xl mr-3">⏱️</span>
+                                    <h3 className="text-lg font-semibold">Runway</h3>
+                                </div>
+                                <p className="text-4xl font-bold mb-2">{Math.floor(runway)} giorni</p>
+                                <p className="text-sm opacity-90">
+                                    Con gli accumuli attuali (€ {patrimonioAccumulato.toFixed(2)}) 
+                                    puoi coprire le spese per circa {(runway / 30).toFixed(1)} mesi
+                                </p>
                             </div>
                         )}
                     </div>
-                </div>
+                </>
             )}
 
             {/* Info Box */}
@@ -274,8 +262,8 @@ function AnalyticsView({ spese }) {
                     <div>
                         <p className="font-semibold text-blue-900 mb-1">Suggerimento</p>
                         <p className="text-sm text-blue-800">
-                            Le <strong>micro-spese</strong> sono spesso sottovalutate ma possono pesare molto nel lungo periodo. 
-                            Un caffè al bar da €1.50 al giorno diventa €547.50 all'anno!
+                            Il <strong>tasso di risparmio</strong> ideale dovrebbe essere almeno il 10-20% delle entrate. 
+                            Un <strong>runway</strong> di 3-6 mesi di spese è considerato un fondo emergenza sano.
                         </p>
                     </div>
                 </div>

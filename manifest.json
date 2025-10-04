@@ -1,7 +1,7 @@
 {
-  "name": "Tracker Spese Famiglia",
-  "short_name": "Spese",
-  "description": "Gestisci le spese di famiglia in modo semplice e sincronizzato",
+  "name": "Tracker Finanze Famiglia",
+  "short_name": "Finanze",
+  "description": "Gestisci entrate, spese e accumuli di famiglia in modo semplice e sincronizzato",
   "start_url": "/tracker-spese/",
   "scope": "/tracker-spese/",
   "display": "standalone",

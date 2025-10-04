@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#2563eb">
-    <meta name="description" content="Tracker spese famiglia - Gestisci le spese di famiglia in modo semplice">
+    <meta name="description" content="Tracker finanze famiglia - Gestisci entrate, spese e accumuli in modo semplice">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Spese">
+    <meta name="apple-mobile-web-app-title" content="Finanze">
     <link rel="manifest" href="/tracker-spese/manifest.json">
     <link rel="apple-touch-icon" href="/tracker-spese/icon-192.png">
-    <title>Tracker Spese Famiglia</title>
+    <title>Tracker Finanze Famiglia</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- React e ReactDOM DEVONO essere caricati PRIMA -->
@@ -54,20 +54,26 @@
     
     <!-- Componenti React -->
     <script type="text/babel" src="/tracker-spese/js/components/LoginPage.js"></script>
-    <script type="text/babel" src="/tracker-spese/js/components/SpeseView.js"></script>
+    <script type="text/babel" src="/tracker-spese/js/components/TransactionsView.js"></script>
     <script type="text/babel" src="/tracker-spese/js/components/CategorieView.js"></script>
     <script type="text/babel" src="/tracker-spese/js/components/ReminderView.js"></script>
     <script type="text/babel" src="/tracker-spese/js/components/AnalyticsView.js"></script>
     <script type="text/babel" src="/tracker-spese/js/components/AdminView.js"></script>
     
-    <!-- Modali -->
-    <script type="text/babel" src="/tracker-spese/js/modals/AddSpesaModal.js"></script>
-    <script type="text/babel" src="/tracker-spese/js/modals/EditSpesaModal.js"></script>
+    <!-- Modali Transactions -->
+    <script type="text/babel" src="/tracker-spese/js/modals/AddTransactionModal.js"></script>
+    <script type="text/babel" src="/tracker-spese/js/modals/EditTransactionModal.js"></script>
     <script type="text/babel" src="/tracker-spese/js/modals/GraficoAndamentoModal.js"></script>
+    
+    <!-- Modali Categorie -->
     <script type="text/babel" src="/tracker-spese/js/modals/AddCategoriaModal.js"></script>
     <script type="text/babel" src="/tracker-spese/js/modals/EditCategoriaModal.js"></script>
+    
+    <!-- Modali Reminders -->
     <script type="text/babel" src="/tracker-spese/js/modals/AddReminderModal.js"></script>
     <script type="text/babel" src="/tracker-spese/js/modals/EditReminderModal.js"></script>
+    
+    <!-- Modali Templates -->
     <script type="text/babel" src="/tracker-spese/js/modals/TemplateRicorrentiModal.js"></script>
     <script type="text/babel" src="/tracker-spese/js/modals/AddTemplateModal.js"></script>
     <script type="text/babel" src="/tracker-spese/js/modals/EditTemplateModal.js"></script>
