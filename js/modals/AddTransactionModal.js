@@ -90,8 +90,7 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
 
     const tipoConfig = {
         spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
-        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
-        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
+        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' }
     };
 
     const config = tipoConfig[tipo];
@@ -115,7 +114,7 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                     {/* Selezione Tipo */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             {Object.entries(tipoConfig).map(([key, conf]) => (
                                 <button
                                     key={key}
@@ -144,8 +143,7 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                             required
                             placeholder={
                                 tipo === 'spesa' ? 'Es: Spesa supermercato' :
-                                tipo === 'entrata' ? 'Es: Stipendio Gennaio' :
-                                'Es: Fondo vacanze'
+                                'Es: Stipendio Gennaio'
                             }
                         />
                     </div>
@@ -220,8 +218,7 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                             disabled={loading}
                             className={`flex-1 py-3 rounded-lg font-medium disabled:opacity-50 ${
                                 tipo === 'spesa' ? 'bg-red-600 hover:bg-red-700 text-white' :
-                                tipo === 'entrata' ? 'bg-green-600 hover:bg-green-700 text-white' :
-                                'bg-blue-600 hover:bg-blue-700 text-white'
+                                'bg-green-600 hover:bg-green-700 text-white'
                             }`}
                         >
                             {loading ? 'Salvataggio...' : 'Aggiungi'}

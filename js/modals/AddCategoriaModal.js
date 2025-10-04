@@ -40,8 +40,7 @@ function AddCategoriaModal({ onClose }) {
 
     const tipoConfig = {
         spesa: { label: 'Spese', icon: '💸', color: 'text-red-600' },
-        entrata: { label: 'Entrate', icon: '💰', color: 'text-green-600' },
-        accumulo: { label: 'Accumuli', icon: '🏦', color: 'text-blue-600' }
+        entrata: { label: 'Entrate', icon: '💰', color: 'text-green-600' }
     };
 
     return (
@@ -61,7 +60,7 @@ function AddCategoriaModal({ onClose }) {
                             onChange={(e) => setNome(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
-                            placeholder="Es: Alimentari, Stipendio, Fondo vacanze..."
+                            placeholder="Es: Alimentari, Stipendio, Bollette..."
                         />
                     </div>
 
@@ -109,7 +108,10 @@ function AddCategoriaModal({ onClose }) {
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <p className="text-sm text-blue-900">
                             💡 <strong>Esempio:</strong> "Alimentari" solo per Spese, "Stipendio" solo per Entrate, 
-                            "Fondo emergenza" solo per Accumuli, "Manutenzione auto" per Spese e Accumuli.
+                            "Manutenzione" per entrambe.
+                        </p>
+                        <p className="text-xs text-blue-800 mt-2">
+                            ℹ️ Per gestire accumuli, vai nella sezione 🏦 Accumuli
                         </p>
                     </div>
 

@@ -2,10 +2,16 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const [ordinamento, setOrdinamento] = React.useState('data-recente');
     const [showTemplateModal, setShowTemplateModal] = React.useState(false);
     const [templateToInsert, setTemplateToInsert] = React.useState(null);
+    const [mostraAccumuli, setMostraAccumuli] = React.useState(true); // Toggle per mostrare/nascondere accumuli
     
-    // Filtra per tipo E categoria
+    // Filtra per tipo E categoria E toggle accumuli
     const transactionsFiltrate = React.useMemo(() => {
         let filtrate = transactions;
+        
+        // Filtro toggle accumuli
+        if (!mostraAccumuli) {
+            filtrate = filtrate.filter(t => t.tipo !== 'accumulo');
+        }
         
         // Filtro tipo
         if (filtroTipo !== 'tutte') {
@@ -18,7 +24,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         }
         
         return filtrate;
-    }, [transactions, filtroTipo, filtroCategoria]);
+    }, [transactions, filtroTipo, filtroCategoria, mostraAccumuli]);
 
     // Ordina le transazioni filtrate
     const transactionsOrdinate = [...transactionsFiltrate].sort((a, b) => {
@@ -53,7 +59,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         return dataTransaction.getMonth() === meseScorso && dataTransaction.getFullYear() === annoMeseScorso;
     });
     
-    // Separa per tipo per i calcoli
+    // Separa per tipo per i calcoli - ACCUMULI ESCLUSI DAL CASH FLOW
     const speseQuestoMese = transactionsQuestoMese.filter(t => t.tipo === 'spesa');
     const entrateQuestoMese = transactionsQuestoMese.filter(t => t.tipo === 'entrata');
     const accumuliQuestoMese = transactionsQuestoMese.filter(t => t.tipo === 'accumulo');
@@ -63,7 +69,14 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     
     const totaleSpese = speseQuestoMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
     const totaleEntrate = entrateQuestoMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    const totaleAccumuli = accumuliQuestoMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+    
+    // Calcola versamenti e prelievi accumuli separatamente
+    const versamentiAccumuli = accumuliQuestoMese
+        .filter(t => t.tipoOperazioneAccumulo === 'versamento')
+        .reduce((acc, t) => acc + parseFloat(t.importo), 0);
+    const prelieviAccumuli = accumuliQuestoMese
+        .filter(t => t.tipoOperazioneAccumulo === 'prelievo')
+        .reduce((acc, t) => acc + parseFloat(t.importo), 0);
     
     const totaleSpeseMeseScorso = speseMeseScorso.reduce((acc, t) => acc + parseFloat(t.importo), 0);
     const totaleEntrateMeseScorso = entrateMeseScorso.reduce((acc, t) => acc + parseFloat(t.importo), 0);
@@ -95,6 +108,29 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
 
     return (
         <div className="fade-in">
+            {/* Toggle Accumuli */}
+            <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                    <span className="text-2xl">🏦</span>
+                    <div>
+                        <p className="text-sm font-semibold text-blue-900">Mostra operazioni accumuli</p>
+                        <p className="text-xs text-blue-700">Versamenti e prelievi dai fondi accantonati</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => setMostraAccumuli(!mostraAccumuli)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        mostraAccumuli ? 'bg-blue-600' : 'bg-gray-300'
+                    }`}
+                >
+                    <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            mostraAccumuli ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                    />
+                </button>
+            </div>
+
             {/* Filtri per tipo */}
             <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
                 <button
@@ -146,7 +182,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     <>
                         <div className="mb-3">
                             <p className="text-xs opacity-90 mb-1">Questo mese</p>
-                            <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="grid grid-cols-2 gap-2 text-center mb-2">
                                 <div>
                                     <p className="text-xs opacity-75">💰 Entrate</p>
                                     <p className="text-lg font-bold">€ {totaleEntrate.toFixed(2)}</p>
@@ -155,11 +191,19 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                     <p className="text-xs opacity-75">💸 Spese</p>
                                     <p className="text-lg font-bold">€ {totaleSpese.toFixed(2)}</p>
                                 </div>
-                                <div>
-                                    <p className="text-xs opacity-75">🏦 Accumuli</p>
-                                    <p className="text-lg font-bold">€ {totaleAccumuli.toFixed(2)}</p>
-                                </div>
                             </div>
+                            {mostraAccumuli && (versamentiAccumuli > 0 || prelieviAccumuli > 0) && (
+                                <div className="grid grid-cols-2 gap-2 text-center border-t border-blue-500 pt-2 mt-2">
+                                    <div>
+                                        <p className="text-xs opacity-75">➕ Versamenti</p>
+                                        <p className="text-sm font-bold">€ {versamentiAccumuli.toFixed(2)}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-75">➖ Prelievi</p>
+                                        <p className="text-sm font-bold">€ {prelieviAccumuli.toFixed(2)}</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         
                         <div className="border-t border-blue-500 pt-3">
@@ -201,7 +245,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
             </div>
 
             {/* Pulsanti inserimento */}
-            <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="grid grid-cols-3 gap-2 mb-4">
                 <button
                     onClick={() => {
                         setTemplateToInsert({ tipo: 'spesa' });
@@ -221,16 +265,6 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 >
                     <span className="text-xl block">💰</span>
                     Entrata
-                </button>
-                <button
-                    onClick={() => {
-                        setTemplateToInsert({ tipo: 'accumulo' });
-                        setShowAddTransaction(true);
-                    }}
-                    className="bg-blue-500 text-white py-3 rounded-lg font-medium hover:bg-blue-600 shadow text-sm"
-                >
-                    <span className="text-xl block">🏦</span>
-                    Accumulo
                 </button>
                 <button
                     onClick={() => setShowTemplateModal(true)}
@@ -271,6 +305,17 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     transactionsOrdinate.map(transaction => {
                         const config = tipoConfig[transaction.tipo || 'spesa'];
                         
+                        // Badge speciale per accumuli
+                        let accumuloBadge = null;
+                        if (transaction.tipo === 'accumulo') {
+                            const isVersamento = transaction.tipoOperazioneAccumulo === 'versamento';
+                            accumuloBadge = {
+                                label: isVersamento ? '➕ Versamento' : '➖ Prelievo',
+                                bg: isVersamento ? 'bg-green-100' : 'bg-orange-100',
+                                color: isVersamento ? 'text-green-800' : 'text-orange-800'
+                            };
+                        }
+                        
                         return (
                             <div key={transaction.id} className={`bg-white rounded-lg p-4 shadow border-l-4 ${config.border}`}>
                                 <div className="flex justify-between items-start mb-2">
@@ -280,6 +325,11 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                             <span className={`text-xs px-2 py-0.5 rounded ${config.lightBg} ${config.color} font-medium`}>
                                                 {config.label}
                                             </span>
+                                            {accumuloBadge && (
+                                                <span className={`text-xs px-2 py-0.5 rounded ${accumuloBadge.bg} ${accumuloBadge.color} font-medium`}>
+                                                    {accumuloBadge.label}
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="font-bold text-lg text-gray-800">{transaction.descrizione}</p>
                                         <p className="text-sm text-gray-500">{transaction.categoria}</p>

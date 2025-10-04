@@ -7,6 +7,36 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
     const [nota, setNota] = React.useState(transaction.nota || '');
     const [loading, setLoading] = React.useState(false);
 
+    // Se è una transazione di tipo accumulo, blocca la modifica
+    if (transaction.tipo === 'accumulo') {
+        return (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg">
+                    <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                        <h2 className="text-xl font-bold">⚠️ Operazione non permessa</h2>
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                    </div>
+                    <div className="p-4">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                            <p className="text-blue-900 mb-2">
+                                <strong>Le operazioni di accumulo non possono essere modificate da qui.</strong>
+                            </p>
+                            <p className="text-sm text-blue-800">
+                                Per modificare versamenti o prelievi dagli accumuli, vai nella sezione 🏦 <strong>Accumuli</strong> e gestiscili da lì.
+                            </p>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700"
+                        >
+                            Ho capito
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     // Filtra categorie in base al tipo selezionato
     const categorieDisponibili = categorie.filter(cat => 
         cat.applicabileA && cat.applicabileA.includes(tipo)
@@ -43,8 +73,7 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
 
     const tipoConfig = {
         spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
-        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
-        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
+        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' }
     };
 
     return (
@@ -59,7 +88,7 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
                     {/* Selezione Tipo */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                             {Object.entries(tipoConfig).map(([key, conf]) => (
                                 <button
                                     key={key}

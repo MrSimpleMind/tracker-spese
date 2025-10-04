@@ -39,8 +39,7 @@ function EditCategoriaModal({ categoria, onClose }) {
 
     const tipoConfig = {
         spesa: { label: 'Spese', icon: '💸', color: 'text-red-600' },
-        entrata: { label: 'Entrate', icon: '💰', color: 'text-green-600' },
-        accumulo: { label: 'Accumuli', icon: '🏦', color: 'text-blue-600' }
+        entrata: { label: 'Entrate', icon: '💰', color: 'text-green-600' }
     };
 
     return (
@@ -101,6 +100,12 @@ function EditCategoriaModal({ categoria, onClose }) {
                                 </label>
                             ))}
                         </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                        <p className="text-xs text-blue-800">
+                            ℹ️ Per gestire accumuli, vai nella sezione 🏦 Accumuli
+                        </p>
                     </div>
 
                     <div className="flex gap-2 pt-2">
