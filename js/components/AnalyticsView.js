@@ -80,22 +80,32 @@ function AnalyticsView({ transactions }) {
     // 3. Tasso di Risparmio (Accumuli / Entrate)
     const tassoRisparmio = React.useMemo(() => {
         const totaleEntrate = entrate.reduce((acc, t) => acc + parseFloat(t.importo), 0);
-        const totaleAccumuli = accumuli.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        const totaleAccumuli = accumuli.reduce((acc, t) => {
+            const importo = parseFloat(t.importo);
+            return t.tipoOperazioneAccumulo === 'prelievo' ? acc - importo : acc + importo;
+        }, 0);
         
         if (totaleEntrate === 0) return 0;
         return (totaleAccumuli / totaleEntrate * 100);
     }, [entrate, accumuli]);
 
-    // 4. Patrimonio Accumulato (somma accumuli)
+    // 4. Patrimonio Accumulato (somma accumuli - prelievi)
     const patrimonioAccumulato = React.useMemo(() => {
-        return accumuli.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        return accumuli.reduce((acc, t) => {
+            const importo = parseFloat(t.importo);
+            // Se è un versamento, aggiungi; se è un prelievo, sottrai
+            return t.tipoOperazioneAccumulo === 'prelievo' ? acc - importo : acc + importo;
+        }, 0);
     }, [accumuli]);
 
     // 5. Runway (quanto duri con accumuli al ritmo spese medio)
     const runway = React.useMemo(() => {
         if (spese.length === 0) return 0;
         
-        const totaleAccumuli = accumuli.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+        const totaleAccumuli = accumuli.reduce((acc, t) => {
+            const importo = parseFloat(t.importo);
+            return t.tipoOperazioneAccumulo === 'prelievo' ? acc - importo : acc + importo;
+        }, 0);
         const totaleSpese = spese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
         
         // Calcola giorni del periodo
