@@ -3,7 +3,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const [showTemplateModal, setShowTemplateModal] = React.useState(false);
     const [templateToInsert, setTemplateToInsert] = React.useState(null);
     const [showFiltersModal, setShowFiltersModal] = React.useState(false);
-    const [meseSelezionato, setMeseSelezionato] = React.useState(new Date()); // Mese corrente di default
+    const [meseSelezionato, setMeseSelezionato] = React.useState(new Date());
     
     // Filtra categorie attive (non archiviati) per i filtri
     const categorieAttive = categorie.filter(cat => !cat.archiviato);
@@ -70,6 +70,11 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const totaleEntrate = entrateMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
     const saldo = totaleEntrate - totaleSpese;
 
+    // Funzione per formattare i numeri (rimuove .00 se non necessario)
+    const formatMoney = (num) => {
+        return num % 1 === 0 ? `€${num.toFixed(0)}` : `€${num.toFixed(2)}`;
+    };
+
     // Totale transazioni filtrate (per visualizzazione)
     const totaleFiltrato = transactionsFiltrate.reduce((acc, t) => {
         if (t.tipo === 'spesa') return acc - parseFloat(t.importo);
@@ -121,31 +126,31 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     </button>
                 </div>
 
-                {/* Statistiche mese + pulsante filtri */}
+                {/* Statistiche mese + pulsante filtri - OTTIMIZZATO */}
                 <div className="p-4">
                     <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 grid grid-cols-3 gap-4 text-center">
+                        <div className="flex-1 grid grid-cols-3 gap-2 text-center">
                             {/* Spese */}
                             <div>
                                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Spese</p>
-                                <p className="text-xl font-bold text-red-600">
-                                    €{totaleSpese.toFixed(2)}
+                                <p className="text-base font-bold text-red-600 truncate">
+                                    {formatMoney(totaleSpese)}
                                 </p>
                             </div>
                             
                             {/* Entrate */}
                             <div>
                                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Entrate</p>
-                                <p className="text-xl font-bold text-green-600">
-                                    €{totaleEntrate.toFixed(2)}
+                                <p className="text-base font-bold text-green-600 truncate">
+                                    {formatMoney(totaleEntrate)}
                                 </p>
                             </div>
                             
                             {/* Saldo */}
                             <div>
                                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Saldo</p>
-                                <p className={`text-xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {saldo >= 0 ? '+' : ''}€{saldo.toFixed(2)}
+                                <p className={`text-base font-bold truncate ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {saldo >= 0 ? '+' : ''}{formatMoney(Math.abs(saldo))}
                                 </p>
                             </div>
                         </div>
@@ -196,8 +201,8 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 </button>
             </div>
 
-            {/* Lista transazioni */}
-            <div className="space-y-3">
+            {/* Lista transazioni - CARD OTTIMIZZATE */}
+            <div className="space-y-2">
                 {transactionsOrdinate.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                         <p className="text-4xl mb-2">📭</p>
@@ -219,48 +224,57 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                         }
                         
                         return (
-                            <div key={transaction.id} className={`bg-white rounded-lg p-4 shadow border-l-4 ${config.border}`}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-lg">{config.icon}</span>
-                                            <span className={`text-xs px-2 py-0.5 rounded ${config.lightBg} ${config.color} font-medium`}>
-                                                {config.label}
+                            <div key={transaction.id} className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${config.border}`}>
+                                {/* Prima riga: Badge + Descrizione + Importo + Azioni */}
+                                <div className="flex items-start justify-between gap-2 mb-1.5">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-1.5 mb-1">
+                                            <span className={`text-xs px-1.5 py-0.5 rounded ${config.lightBg} ${config.color} font-medium whitespace-nowrap`}>
+                                                {config.icon} {config.label}
                                             </span>
                                             {accumuloBadge && (
-                                                <span className={`text-xs px-2 py-0.5 rounded ${accumuloBadge.bg} ${accumuloBadge.color} font-medium`}>
+                                                <span className={`text-xs px-1.5 py-0.5 rounded ${accumuloBadge.bg} ${accumuloBadge.color} font-medium whitespace-nowrap`}>
                                                     {accumuloBadge.label}
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="font-bold text-lg text-gray-800">{transaction.descrizione}</p>
-                                        <p className="text-sm text-gray-500">{transaction.categoria}</p>
+                                        <p className="font-bold text-base text-gray-800 truncate">{transaction.descrizione}</p>
                                     </div>
-                                    <div className="flex gap-1 ml-2">
-                                        <button
-                                            onClick={() => setEditingTransaction(transaction)}
-                                            className="text-blue-500 hover:text-blue-700 p-1"
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button
-                                            onClick={() => eliminaTransaction(transaction.id)}
-                                            className="text-red-500 hover:text-red-700 p-1"
-                                        >
-                                            🗑️
-                                        </button>
+                                    
+                                    {/* Importo e azioni */}
+                                    <div className="flex items-start gap-2">
+                                        <p className={`text-lg font-bold ${config.color} whitespace-nowrap`}>
+                                            {transaction.tipo === 'entrata' ? '+' : transaction.tipo === 'spesa' ? '-' : ''}
+                                            €{parseFloat(transaction.importo).toFixed(2)}
+                                        </p>
+                                        <div className="flex gap-0.5">
+                                            <button
+                                                onClick={() => setEditingTransaction(transaction)}
+                                                className="text-blue-500 hover:text-blue-700 p-1 text-sm"
+                                            >
+                                                ✏️
+                                            </button>
+                                            <button
+                                                onClick={() => eliminaTransaction(transaction.id)}
+                                                className="text-red-500 hover:text-red-700 p-1 text-sm"
+                                            >
+                                                🗑️
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex justify-between items-end">
-                                    <div className="text-xs text-gray-400">
-                                        {new Date(transaction.data).toLocaleDateString('it-IT')}
-                                        {transaction.nota && <p className="mt-1 text-gray-500">{transaction.nota}</p>}
-                                    </div>
-                                    <p className={`text-2xl font-bold ${config.color}`}>
-                                        {transaction.tipo === 'entrata' ? '+' : transaction.tipo === 'spesa' ? '-' : ''}
-                                        € {parseFloat(transaction.importo).toFixed(2)}
-                                    </p>
+                                
+                                {/* Seconda riga: Categoria + Data */}
+                                <div className="text-xs text-gray-500 flex items-center gap-1.5">
+                                    <span>{transaction.categoria}</span>
+                                    <span>•</span>
+                                    <span>{new Date(transaction.data).toLocaleDateString('it-IT')}</span>
                                 </div>
+                                
+                                {/* Nota se presente */}
+                                {transaction.nota && (
+                                    <p className="text-xs text-gray-600 mt-1.5 italic">{transaction.nota}</p>
+                                )}
                             </div>
                         );
                     })
