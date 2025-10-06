@@ -1,4 +1,7 @@
 function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editingCategoria, setEditingCategoria }) {
+    // Filtra solo le categorie normali (esclude gli accumuli)
+    const categorieNormali = categorie.filter(cat => !cat.isAccumulo);
+    
     const eliminaCategoria = async (id) => {
         if (confirm('Vuoi eliminare questa categoria? Le transazioni associate rimarranno ma dovrai riassegnarle.')) {
             await db.collection('categorie').doc(id).delete();
@@ -26,14 +29,14 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
             </button>
 
             <div className="space-y-3">
-                {categorie.length === 0 ? (
+                {categorieNormali.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                         <p className="text-4xl mb-2">📁</p>
                         <p>Nessuna categoria creata</p>
                         <p className="text-sm mt-2">Crea la prima categoria per iniziare</p>
                     </div>
                 ) : (
-                    categorie.map(cat => {
+                    categorieNormali.map(cat => {
                         const applicabilita = cat.applicabileA || ['spesa'];
                         
                         return (
