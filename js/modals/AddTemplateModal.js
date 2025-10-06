@@ -107,9 +107,9 @@ function AddTemplateModal({ onClose, categorie }) {
     ];
 
     const tipoConfig = {
-        spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
-        entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
-        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
+        spesa: { label: 'Spesa', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
+        entrata: { label: 'Entrata', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
+        movimento_fondo: { label: 'Movimento Fondo', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
     };
 
     return (
@@ -136,7 +136,6 @@ function AddTemplateModal({ onClose, categorie }) {
                                             : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
                                     }`}
                                 >
-                                    <span className="text-2xl block mb-1">{conf.icon}</span>
                                     {conf.label}
                                 </button>
                             ))}
