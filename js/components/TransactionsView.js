@@ -2,23 +2,19 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const [ordinamento, setOrdinamento] = React.useState('data-recente');
     const [showTemplateModal, setShowTemplateModal] = React.useState(false);
     const [templateToInsert, setTemplateToInsert] = React.useState(null);
-    const [mostraAccumuli, setMostraAccumuli] = React.useState(true); // Toggle per mostrare/nascondere accumuli
+    const [showFiltersModal, setShowFiltersModal] = React.useState(false); // Modale filtri
     
     // Filtra categorie attive (non archiviati) per i filtri
     const categorieAttive = categorie.filter(cat => !cat.archiviato);
     
-    // Filtra per tipo E categoria E toggle accumuli
+    // Il filtro tipo ora è un array di tipi selezionati
+    // Se l'array è vuoto, mostra tutto
     const transactionsFiltrate = React.useMemo(() => {
         let filtrate = transactions;
         
-        // Filtro toggle accumuli
-        if (!mostraAccumuli) {
-            filtrate = filtrate.filter(t => t.tipo !== 'accumulo');
-        }
-        
-        // Filtro tipo
-        if (filtroTipo !== 'tutte') {
-            filtrate = filtrate.filter(t => t.tipo === filtroTipo);
+        // Filtro tipo (selezione multipla)
+        if (filtroTipo && filtroTipo.length > 0) {
+            filtrate = filtrate.filter(t => filtroTipo.includes(t.tipo));
         }
         
         // Filtro categoria
@@ -27,7 +23,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         }
         
         return filtrate;
-    }, [transactions, filtroTipo, filtroCategoria, mostraAccumuli]);
+    }, [transactions, filtroTipo, filtroCategoria]);
 
     // Ordina le transazioni filtrate
     const transactionsOrdinate = [...transactionsFiltrate].sort((a, b) => {
@@ -109,79 +105,17 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         accumulo: { label: 'Accumuli', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-500', lightBg: 'bg-blue-50', border: 'border-blue-500' }
     };
 
+    // Controlla se ci sono filtri attivi
+    const hasFiltriAttivi = (filtroTipo && filtroTipo.length > 0 && filtroTipo.length < 3) || filtroCategoria !== 'tutte' || ordinamento !== 'data-recente';
+    
+    // Mostra accumuli solo se sono nel filtro tipo o se non ci sono filtri
+    const mostraAccumuli = !filtroTipo || filtroTipo.length === 0 || filtroTipo.includes('accumulo');
+
     return (
         <div className="fade-in">
-            {/* Toggle Accumuli */}
-            <div className="mb-4 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2">
-                    <span className="text-2xl">🏦</span>
-                    <div>
-                        <p className="text-sm font-semibold text-blue-900">Mostra operazioni accumuli</p>
-                        <p className="text-xs text-blue-700">Versamenti e prelievi dai fondi accantonati</p>
-                    </div>
-                </div>
-                <button
-                    onClick={() => setMostraAccumuli(!mostraAccumuli)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        mostraAccumuli ? 'bg-blue-600' : 'bg-gray-300'
-                    }`}
-                >
-                    <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            mostraAccumuli ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                    />
-                </button>
-            </div>
-
-            {/* Filtri per tipo */}
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-                <button
-                    onClick={() => setFiltroTipo('tutte')}
-                    className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium ${filtroTipo === 'tutte' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
-                >
-                    Tutte
-                </button>
-                {Object.entries(tipoConfig).map(([key, config]) => (
-                    <button
-                        key={key}
-                        onClick={() => setFiltroTipo(key)}
-                        className={`px-4 py-2 rounded-full whitespace-nowrap text-sm font-medium flex items-center gap-1 ${
-                            filtroTipo === key 
-                                ? `${config.bgColor} text-white` 
-                                : 'bg-gray-200 text-gray-700'
-                        }`}
-                    >
-                        <span>{config.icon}</span>
-                        <span>{config.label}</span>
-                    </button>
-                ))}
-            </div>
-
-            {/* Filtri per categoria */}
-            {categorieAttive.length > 0 && (
-                <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
-                    <button
-                        onClick={() => setFiltroCategoria('tutte')}
-                        className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-medium ${filtroCategoria === 'tutte' ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600'}`}
-                    >
-                        Tutte le categorie
-                    </button>
-                    {categorieAttive.map(cat => (
-                        <button
-                            key={cat.id}
-                            onClick={() => setFiltroCategoria(cat.nome)}
-                            className={`px-3 py-1.5 rounded-full whitespace-nowrap text-xs font-medium ${filtroCategoria === cat.nome ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-600'}`}
-                        >
-                            {cat.nome}
-                        </button>
-                    ))}
-                </div>
-            )}
-
-            {/* Summary Card */}
+            {/* Summary Card - PRIMA COSA SOTTO HEADER */}
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 mb-4 shadow-lg">
-                {filtroTipo === 'tutte' && filtroCategoria === 'tutte' ? (
+                {(!filtroTipo || filtroTipo.length === 0) && filtroCategoria === 'tutte' ? (
                     <>
                         <div className="mb-3">
                             <p className="text-xs opacity-90 mb-1">Questo mese</p>
@@ -195,7 +129,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                     <p className="text-lg font-bold">€ {totaleSpese.toFixed(2)}</p>
                                 </div>
                             </div>
-                            {mostraAccumuli && (versamentiAccumuli > 0 || prelieviAccumuli > 0) && (
+                            {(versamentiAccumuli > 0 || prelieviAccumuli > 0) && (
                                 <div className="grid grid-cols-2 gap-2 text-center border-t border-blue-500 pt-2 mt-2">
                                     <div>
                                         <p className="text-xs opacity-75">➕ Versamenti</p>
@@ -236,7 +170,10 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 ) : (
                     <>
                         <p className="text-xs opacity-90 mb-1">
-                            {filtroTipo !== 'tutte' ? tipoConfig[filtroTipo].label : 'Tutte'} 
+                            {filtroTipo && filtroTipo.length > 0 
+                                ? filtroTipo.map(tipo => tipoConfig[tipo].label).join(', ')
+                                : 'Tutte'
+                            }
                             {filtroCategoria !== 'tutte' ? ` - ${filtroCategoria}` : ''}
                         </p>
                         <p className="text-3xl font-bold">
@@ -247,55 +184,48 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 )}
             </div>
 
-            {/* Pulsanti inserimento */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
+            {/* Pulsante Filtri */}
+            <div className="mb-4">
                 <button
-                    onClick={() => {
-                        setTemplateToInsert({ tipo: 'spesa' });
-                        setShowAddTransaction(true);
-                    }}
-                    className="bg-red-500 text-white py-3 rounded-lg font-medium hover:bg-red-600 shadow text-sm"
+                    onClick={() => setShowFiltersModal(true)}
+                    className={`w-full py-3 px-4 rounded-lg font-medium shadow flex items-center justify-between ${
+                        hasFiltriAttivi 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-white text-gray-700 border border-gray-300'
+                    }`}
                 >
-                    <span className="text-xl block">💸</span>
-                    Spesa
-                </button>
-                <button
-                    onClick={() => {
-                        setTemplateToInsert({ tipo: 'entrata' });
-                        setShowAddTransaction(true);
-                    }}
-                    className="bg-green-500 text-white py-3 rounded-lg font-medium hover:bg-green-600 shadow text-sm"
-                >
-                    <span className="text-xl block">💰</span>
-                    Entrata
-                </button>
-                <button
-                    onClick={() => setShowTemplateModal(true)}
-                    className="bg-gray-600 text-white py-3 rounded-lg font-medium hover:bg-gray-700 shadow text-sm"
-                >
-                    <span className="text-xl block">⚙️</span>
-                    Template
+                    <div className="flex items-center gap-2">
+                        <span className="text-lg">🔍</span>
+                        <span>Filtri e ordinamento</span>
+                    </div>
+                    {hasFiltriAttivi && (
+                        <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                            Attivi
+                        </span>
+                    )}
                 </button>
             </div>
 
-            {/* Ordinamento */}
-            {transactionsFiltrate.length > 0 && (
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        🔄 Ordina per:
-                    </label>
-                    <select
-                        value={ordinamento}
-                        onChange={(e) => setOrdinamento(e.target.value)}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700"
-                    >
-                        <option value="data-recente">📅 Data (più recente)</option>
-                        <option value="data-vecchia">📅 Data (più vecchia)</option>
-                        <option value="importo-alto">💰 Importo (più alto)</option>
-                        <option value="importo-basso">💰 Importo (più basso)</option>
-                    </select>
-                </div>
-            )}
+            {/* Pulsanti inserimento - PIÙ COMPATTI */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+                <button
+                    onClick={() => {
+                        setTemplateToInsert(null);
+                        setShowAddTransaction(true);
+                    }}
+                    className="bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-600 shadow flex items-center justify-center gap-2"
+                >
+                    <span className="text-xl">➕</span>
+                    <span>Nuova operazione</span>
+                </button>
+                <button
+                    onClick={() => setShowTemplateModal(true)}
+                    className="bg-gray-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-gray-700 shadow flex items-center justify-center gap-2"
+                >
+                    <span className="text-xl">⚙️</span>
+                    <span>Template</span>
+                </button>
+            </div>
 
             {/* Lista transazioni */}
             <div className="space-y-3">
@@ -367,6 +297,130 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     })
                 )}
             </div>
+
+            {/* Modale Filtri */}
+            {showFiltersModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
+                    <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-gray-900">🔍 Filtri e ordinamento</h3>
+                            <button
+                                onClick={() => setShowFiltersModal(false)}
+                                className="text-gray-500 hover:text-gray-700 text-2xl"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        <div className="p-4 space-y-6">
+                            {/* Filtro tipo operazione - SELEZIONE MULTIPLA */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    Tipo di operazione
+                                </label>
+                                <div className="space-y-2">
+                                    {Object.entries(tipoConfig).map(([key, config]) => {
+                                        const isSelected = filtroTipo && filtroTipo.includes(key);
+                                        return (
+                                            <button
+                                                key={key}
+                                                onClick={() => {
+                                                    if (!filtroTipo || filtroTipo.length === 0) {
+                                                        // Se non ci sono filtri, inizia con questo tipo
+                                                        setFiltroTipo([key]);
+                                                    } else if (isSelected) {
+                                                        // Rimuovi se già selezionato
+                                                        const newFiltro = filtroTipo.filter(t => t !== key);
+                                                        setFiltroTipo(newFiltro.length === 0 ? [] : newFiltro);
+                                                    } else {
+                                                        // Aggiungi
+                                                        setFiltroTipo([...filtroTipo, key]);
+                                                    }
+                                                }}
+                                                className={`w-full py-3 px-4 rounded-lg font-medium flex items-center justify-between border-2 transition-all ${
+                                                    isSelected
+                                                        ? `${config.bgColor} text-white border-transparent`
+                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <span className={isSelected ? '' : 'opacity-50'}>{config.icon}</span>
+                                                    <span>{config.label}</span>
+                                                </div>
+                                                {isSelected && <span className="text-xl">✓</span>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {filtroTipo && filtroTipo.length > 0 && (
+                                    <button
+                                        onClick={() => setFiltroTipo([])}
+                                        className="mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
+                                    >
+                                        Mostra tutte le operazioni
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Filtro categoria */}
+                            {categorieAttive.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-3">
+                                        Categoria
+                                    </label>
+                                    <select
+                                        value={filtroCategoria}
+                                        onChange={(e) => setFiltroCategoria(e.target.value)}
+                                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700"
+                                    >
+                                        <option value="tutte">Tutte le categorie</option>
+                                        {categorieAttive.map(cat => (
+                                            <option key={cat.id} value={cat.nome}>{cat.nome}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Ordinamento */}
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    Ordinamento
+                                </label>
+                                <select
+                                    value={ordinamento}
+                                    onChange={(e) => setOrdinamento(e.target.value)}
+                                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700"
+                                >
+                                    <option value="data-recente">📅 Data (più recente)</option>
+                                    <option value="data-vecchia">📅 Data (più vecchia)</option>
+                                    <option value="importo-alto">💰 Importo (più alto)</option>
+                                    <option value="importo-basso">💰 Importo (più basso)</option>
+                                </select>
+                            </div>
+
+                            {/* Pulsanti azione */}
+                            <div className="flex gap-2 pt-4 border-t border-gray-200">
+                                <button
+                                    onClick={() => {
+                                        setFiltroTipo([]);
+                                        setFiltroCategoria('tutte');
+                                        setOrdinamento('data-recente');
+                                    }}
+                                    className="flex-1 py-3 px-4 rounded-lg font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                >
+                                    Ripristina
+                                </button>
+                                <button
+                                    onClick={() => setShowFiltersModal(false)}
+                                    className="flex-1 py-3 px-4 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700"
+                                >
+                                    Applica
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showAddTransaction && (
                 <AddTransactionModal 

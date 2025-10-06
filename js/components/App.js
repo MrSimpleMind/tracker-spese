@@ -12,7 +12,7 @@ function App() {
     const [editingTransaction, setEditingTransaction] = React.useState(null);
     const [editingCategoria, setEditingCategoria] = React.useState(null);
     const [editingReminder, setEditingReminder] = React.useState(null);
-    const [filtroTipo, setFiltroTipo] = React.useState('tutte');
+    const [filtroTipo, setFiltroTipo] = React.useState([]);
     const [filtroCategoria, setFiltroCategoria] = React.useState('tutte');
     const [reminderScaduti, setReminderScaduti] = React.useState(0);
     const [templatesScaduti, setTemplatesScaduti] = React.useState([]);
