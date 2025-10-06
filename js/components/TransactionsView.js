@@ -126,57 +126,59 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     </button>
                 </div>
 
-                {/* Statistiche mese + pulsante filtri - OTTIMIZZATO */}
+                {/* Statistiche mese - OTTIMIZZATO */}
                 <div className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 grid grid-cols-3 gap-2 text-center">
-                            {/* Spese */}
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Spese</p>
-                                <p className="text-base font-bold text-red-600 truncate">
-                                    {formatMoney(totaleSpese)}
-                                </p>
-                            </div>
-                            
-                            {/* Entrate */}
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Entrate</p>
-                                <p className="text-base font-bold text-green-600 truncate">
-                                    {formatMoney(totaleEntrate)}
-                                </p>
-                            </div>
-                            
-                            {/* Saldo */}
-                            <div>
-                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Saldo</p>
-                                <p className={`text-base font-bold truncate ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {saldo >= 0 ? '+' : ''}{formatMoney(Math.abs(saldo))}
-                                </p>
-                            </div>
+                    {/* Numeri - Occupano tutto lo spazio disponibile */}
+                    <div className="grid grid-cols-3 gap-3 text-center mb-3">
+                        {/* Spese */}
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Spese</p>
+                            <p className="text-base font-bold text-red-600">
+                                {formatMoney(totaleSpese)}
+                            </p>
                         </div>
                         
-                        {/* Icona filtri */}
-                        <button
-                            onClick={() => setShowFiltersModal(true)}
-                            className={`ml-3 p-2 rounded-lg ${
-                                hasFiltriAttivi 
-                                    ? 'bg-blue-600 text-white' 
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                        </button>
+                        {/* Entrate */}
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Entrate</p>
+                            <p className="text-base font-bold text-green-600">
+                                {formatMoney(totaleEntrate)}
+                            </p>
+                        </div>
+                        
+                        {/* Saldo */}
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Saldo</p>
+                            <p className={`text-base font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                {saldo >= 0 ? '+' : ''}{formatMoney(Math.abs(saldo))}
+                            </p>
+                        </div>
                     </div>
 
-                    {/* Pulsante grafico */}
-                    <button
-                        onClick={() => setShowGrafico(true)}
-                        className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                        📊 Mostra andamento
-                    </button>
+                    {/* Pulsanti grafico e filtri - sulla stessa riga */}
+                    <div className="flex items-center justify-center gap-4 pt-2 border-t border-gray-100">
+                        <button
+                            onClick={() => setShowGrafico(true)}
+                            className="flex items-center gap-1.5 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                            <span>📊</span>
+                            <span>Mostra andamento</span>
+                        </button>
+                        
+                        <button
+                            onClick={() => setShowFiltersModal(true)}
+                            className={`flex items-center gap-1.5 py-2 text-sm font-medium ${
+                                hasFiltriAttivi 
+                                    ? 'text-blue-600' 
+                                    : 'text-gray-600 hover:text-gray-700'
+                            }`}
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            <span>Filtri</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
