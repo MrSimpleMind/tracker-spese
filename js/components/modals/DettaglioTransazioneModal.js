@@ -1,8 +1,6 @@
 function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, categorie }) {
     const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
     
-    if (!transaction) return null;
-    
     const tipoConfig = {
         spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-500', lightBg: 'bg-red-50', border: 'border-red-500' },
         entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-500', lightBg: 'bg-green-50', border: 'border-green-500' },
@@ -121,21 +119,10 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                         </>
                     )}
 
-                    {/* Nota (se presente) */}
-                    {transaction.nota && transaction.nota.trim() !== '' && (
-                        <div className="flex items-start gap-3">
-                            <div className="text-2xl">💭</div>
-                            <div className="flex-1">
-                                <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Nota</p>
-                                <p className="text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap break-words">{transaction.nota}</p>
-                            </div>
-                        </div>
-                    )}
-
                     {/* Template ricorrente (se presente) */}
                     {transaction.isTemplate && (
                         <div className={`${config.lightBg} border-l-4 ${config.border} p-3 rounded`}>
-                            <p className={`text-sm font-medium ${config.color}`}>⚙️ Transazione da template ricorrente</p>
+                            <p className="text-sm font-medium ${config.color}">⚙️ Transazione da template ricorrente</p>
                         </div>
                     )}
                 </div>

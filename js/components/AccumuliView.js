@@ -1,6 +1,6 @@
 function AccumuliView({ transactions, categorie }) {
     const [showAddAccumulo, setShowAddAccumulo] = React.useState(false);
-    const [showOperazione, setShowOperazione] = React.useState(null); // Contiene l'accumulo selezionato
+    const [showOperazione, setShowOperazione] = React.useState(null);
     const [editingAccumulo, setEditingAccumulo] = React.useState(null);
     const [showArchiviati, setShowArchiviati] = React.useState(false);
 
@@ -47,8 +47,7 @@ function AccumuliView({ transactions, categorie }) {
             return;
         }
         
-        // Doppia conferma per sicurezza
-        if (!confirm(`Sei ASSOLUTAMENTE SICURO di voler eliminare definitivamente "${nome}"? Scrivi OK nella prossima finestra per confermare.`)) {
+        if (!confirm(`Sei ASSOLUTAMENTE SICURO di voler eliminare definitivamente "${nome}"?`)) {
             return;
         }
         
@@ -67,113 +66,146 @@ function AccumuliView({ transactions, categorie }) {
         });
     };
 
+    // Calcolo totale accantonato
+    const totaleAccantonato = accumuliAttivi.reduce((acc, a) => 
+        acc + calcolaSaldoAccumulo(a.id).saldo, 0
+    );
+
     return (
         <div className="fade-in">
-            <div className="mb-4">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">🏦 Accumuli</h2>
-                <p className="text-gray-600 text-sm">Gestisci i tuoi fondi accantonati</p>
-            </div>
+            {/* Header */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900">🏦 Accumuli</h2>
+                        <p className="text-sm text-gray-600 mt-0.5">Gestisci i tuoi fondi accantonati</p>
+                    </div>
+                    {accumuliAttivi.length > 0 && (
+                        <div className="text-right">
+                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Totale</p>
+                            <p className="text-xl font-bold text-blue-600">€{totaleAccantonato.toFixed(2)}</p>
+                        </div>
+                    )}
+                </div>
 
-            {/* Info Box */}
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start">
-                    <span className="text-2xl mr-3">💡</span>
-                    <div className="text-sm text-blue-900">
-                        <p className="font-semibold mb-1">Cosa sono gli Accumuli?</p>
-                        <p>Gli accumuli sono fondi accantonati per obiettivi specifici (vacanze, emergenze, ecc.). Le spese pagate da accumuli <strong>non impattano il cash flow</strong> perché sono soldi già messi da parte.</p>
+                {/* Info Box */}
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                    <div className="flex items-start gap-2">
+                        <span className="text-lg">💡</span>
+                        <div className="text-xs text-blue-900">
+                            <p className="font-semibold mb-0.5">Cosa sono gli Accumuli?</p>
+                            <p>Fondi accantonati per obiettivi specifici. Le spese pagate da accumuli <strong>non impattano il cash flow</strong>.</p>
+                        </div>
                     </div>
                 </div>
             </div>
 
+            {/* Pulsante nuovo accumulo */}
             <button
                 onClick={() => setShowAddAccumulo(true)}
-                className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 mb-4 shadow"
+                className="w-full bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-600 shadow-sm mb-4 flex items-center justify-center gap-2"
             >
-                ➕ Nuovo Accumulo
+                <span className="text-xl">➕</span>
+                <span>Nuovo Accumulo</span>
             </button>
 
             {/* Lista Accumuli Attivi */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {accumuliAttivi.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
+                    <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-gray-200">
                         <p className="text-4xl mb-2">🏦</p>
-                        <p>Nessun accumulo creato</p>
-                        <p className="text-sm mt-2">Crea il primo accumulo per iniziare ad accantonare fondi</p>
+                        <p className="font-medium">Nessun accumulo creato</p>
+                        <p className="text-sm mt-1">Crea il primo accumulo per iniziare</p>
                     </div>
                 ) : (
                     accumuliAttivi.map(accumulo => {
                         const { saldo, versamenti, prelievi, numeroOperazioni } = calcolaSaldoAccumulo(accumulo.id);
                         
                         return (
-                            <div key={accumulo.id} className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-5 shadow-lg">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div className="flex-1">
-                                        <h3 className="text-xl font-bold mb-1">{accumulo.nome}</h3>
-                                        {accumulo.descrizione && (
-                                            <p className="text-sm opacity-90">{accumulo.descrizione}</p>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={() => setEditingAccumulo(accumulo)}
-                                            className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded"
-                                            title="Modifica"
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button
-                                            onClick={() => archiviaAccumulo(accumulo.id, accumulo.nome)}
-                                            className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded"
-                                            title="Archivia"
-                                        >
-                                            📦
-                                        </button>
-                                        <button
-                                            onClick={() => eliminaAccumuloDefinitivamente(accumulo.id, accumulo.nome)}
-                                            className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded"
-                                            title="Elimina definitivamente"
-                                        >
-                                            🗑️
-                                        </button>
+                            <div key={accumulo.id} className="bg-white rounded-lg shadow-sm border-l-4 border-blue-500 overflow-hidden">
+                                {/* Header */}
+                                <div className="p-4 border-b border-gray-100">
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-base font-semibold text-gray-900 mb-0.5">{accumulo.nome}</h3>
+                                            {accumulo.descrizione && (
+                                                <p className="text-sm text-gray-600 line-clamp-2">{accumulo.descrizione}</p>
+                                            )}
+                                        </div>
+                                        <div className="flex gap-1">
+                                            <button
+                                                onClick={() => setEditingAccumulo(accumulo)}
+                                                className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50"
+                                                title="Modifica"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => archiviaAccumulo(accumulo.id, accumulo.nome)}
+                                                className="text-gray-400 hover:text-orange-600 p-1.5 rounded hover:bg-orange-50"
+                                                title="Archivia"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={() => eliminaAccumuloDefinitivamente(accumulo.id, accumulo.nome)}
+                                                className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50"
+                                                title="Elimina definitivamente"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                                 
                                 {/* Saldo Principale */}
-                                <div className="border-t border-white border-opacity-30 pt-3 mb-3">
-                                    <p className="text-sm opacity-75 mb-1">Saldo Attuale</p>
-                                    <p className="text-4xl font-bold">€ {saldo.toFixed(2)}</p>
+                                <div className="p-4 bg-blue-50">
+                                    <p className="text-xs text-gray-600 uppercase tracking-wide mb-1">Saldo Attuale</p>
+                                    <p className="text-3xl font-bold text-blue-600">€{saldo.toFixed(2)}</p>
                                 </div>
                                 
                                 {/* Statistiche */}
-                                <div className="grid grid-cols-3 gap-2 mb-3 text-xs">
-                                    <div className="bg-white bg-opacity-10 rounded p-2">
-                                        <p className="opacity-75">Versamenti</p>
-                                        <p className="font-bold">€ {versamenti.toFixed(2)}</p>
+                                <div className="grid grid-cols-3 gap-3 p-4 border-b border-gray-100">
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-0.5">Versamenti</p>
+                                        <p className="text-sm font-semibold text-green-600">+€{versamenti.toFixed(2)}</p>
                                     </div>
-                                    <div className="bg-white bg-opacity-10 rounded p-2">
-                                        <p className="opacity-75">Prelievi</p>
-                                        <p className="font-bold">€ {prelievi.toFixed(2)}</p>
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-0.5">Prelievi</p>
+                                        <p className="text-sm font-semibold text-red-600">-€{prelievi.toFixed(2)}</p>
                                     </div>
-                                    <div className="bg-white bg-opacity-10 rounded p-2">
-                                        <p className="opacity-75">Operazioni</p>
-                                        <p className="font-bold">{numeroOperazioni}</p>
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-0.5">Operazioni</p>
+                                        <p className="text-sm font-semibold text-gray-700">{numeroOperazioni}</p>
                                     </div>
                                 </div>
                                 
                                 {/* Pulsanti Azione */}
-                                <div className="grid grid-cols-2 gap-2">
+                                <div className="p-3 bg-gray-50 grid grid-cols-2 gap-2">
                                     <button
                                         onClick={() => setShowOperazione({ ...accumulo, tipo: 'versamento' })}
-                                        className="bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-4 rounded font-medium"
+                                        className="bg-green-600 text-white py-2 px-3 rounded-lg font-medium hover:bg-green-700 text-sm flex items-center justify-center gap-1.5"
                                     >
-                                        ➕ Versa
+                                        <span>➕</span>
+                                        <span>Versa</span>
                                     </button>
                                     <button
                                         onClick={() => setShowOperazione({ ...accumulo, tipo: 'prelievo' })}
-                                        className="bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-4 rounded font-medium"
+                                        className={`py-2 px-3 rounded-lg font-medium text-sm flex items-center justify-center gap-1.5 ${
+                                            saldo <= 0 
+                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                                : 'bg-orange-600 text-white hover:bg-orange-700'
+                                        }`}
                                         disabled={saldo <= 0}
                                     >
-                                        ➖ Preleva
+                                        <span>➖</span>
+                                        <span>Preleva</span>
                                     </button>
                                 </div>
                             </div>
@@ -184,65 +216,78 @@ function AccumuliView({ transactions, categorie }) {
 
             {/* Sezione Accumuli Archiviati */}
             {accumuliArchiviati.length > 0 && (
-                <div className="mt-6">
+                <div className="mt-4">
                     <button
                         onClick={() => setShowArchiviati(!showArchiviati)}
-                        className="w-full bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 mb-3 flex items-center justify-between px-4"
+                        className="w-full bg-white border border-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 flex items-center justify-between px-4 shadow-sm"
                     >
-                        <span>📦 Accumuli Archiviati ({accumuliArchiviati.length})</span>
-                        <span>{showArchiviati ? '▼' : '▶'}</span>
+                        <span className="flex items-center gap-2">
+                            <span>📦</span>
+                            <span>Accumuli Archiviati ({accumuliArchiviati.length})</span>
+                        </span>
+                        <svg className={`w-4 h-4 transition-transform ${showArchiviati ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
                     </button>
                     
                     {showArchiviati && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 mt-3">
                             {accumuliArchiviati.map(accumulo => {
                                 const { saldo, versamenti, prelievi, numeroOperazioni } = calcolaSaldoAccumulo(accumulo.id);
                                 
                                 return (
-                                    <div key={accumulo.id} className="bg-gradient-to-r from-gray-400 to-gray-500 text-white rounded-lg p-4 shadow opacity-75">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div className="flex-1">
-                                                <h3 className="text-lg font-bold mb-1">{accumulo.nome}</h3>
-                                                {accumulo.descrizione && (
-                                                    <p className="text-sm opacity-90">{accumulo.descrizione}</p>
-                                                )}
-                                                <p className="text-xs opacity-75 mt-1">Archiviato</p>
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => ripristinaAccumulo(accumulo.id, accumulo.nome)}
-                                                    className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded text-sm"
-                                                    title="Ripristina"
-                                                >
-                                                    ♻️
-                                                </button>
-                                                <button
-                                                    onClick={() => eliminaAccumuloDefinitivamente(accumulo.id, accumulo.nome)}
-                                                    className="bg-white bg-opacity-20 hover:bg-opacity-30 p-2 rounded text-sm"
-                                                    title="Elimina definitivamente"
-                                                >
-                                                    🗑️
-                                                </button>
+                                    <div key={accumulo.id} className="bg-white rounded-lg shadow-sm border-l-4 border-gray-400 opacity-75">
+                                        <div className="p-4 border-b border-gray-100">
+                                            <div className="flex justify-between items-start gap-3">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <h3 className="text-base font-semibold text-gray-700">{accumulo.nome}</h3>
+                                                        <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded">Archiviato</span>
+                                                    </div>
+                                                    {accumulo.descrizione && (
+                                                        <p className="text-sm text-gray-500">{accumulo.descrizione}</p>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => ripristinaAccumulo(accumulo.id, accumulo.nome)}
+                                                        className="text-gray-400 hover:text-green-600 p-1.5 rounded hover:bg-green-50"
+                                                        title="Ripristina"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => eliminaAccumuloDefinitivamente(accumulo.id, accumulo.nome)}
+                                                        className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50"
+                                                        title="Elimina definitivamente"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                         
-                                        <div className="border-t border-white border-opacity-30 pt-2">
-                                            <p className="text-sm opacity-75">Saldo Finale</p>
-                                            <p className="text-2xl font-bold">€ {saldo.toFixed(2)}</p>
+                                        <div className="p-4 bg-gray-50">
+                                            <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Saldo Finale</p>
+                                            <p className="text-2xl font-bold text-gray-600">€{saldo.toFixed(2)}</p>
                                         </div>
                                         
-                                        <div className="grid grid-cols-3 gap-2 mt-2 text-xs">
-                                            <div className="bg-white bg-opacity-10 rounded p-2">
-                                                <p className="opacity-75">Versamenti</p>
-                                                <p className="font-bold">€ {versamenti.toFixed(2)}</p>
+                                        <div className="grid grid-cols-3 gap-3 p-4">
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-0.5">Versamenti</p>
+                                                <p className="text-sm font-semibold text-gray-600">€{versamenti.toFixed(2)}</p>
                                             </div>
-                                            <div className="bg-white bg-opacity-10 rounded p-2">
-                                                <p className="opacity-75">Prelievi</p>
-                                                <p className="font-bold">€ {prelievi.toFixed(2)}</p>
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-0.5">Prelievi</p>
+                                                <p className="text-sm font-semibold text-gray-600">€{prelievi.toFixed(2)}</p>
                                             </div>
-                                            <div className="bg-white bg-opacity-10 rounded p-2">
-                                                <p className="opacity-75">Operazioni</p>
-                                                <p className="font-bold">{numeroOperazioni}</p>
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-0.5">Operazioni</p>
+                                                <p className="text-sm font-semibold text-gray-600">{numeroOperazioni}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -250,18 +295,6 @@ function AccumuliView({ transactions, categorie }) {
                             })}
                         </div>
                     )}
-                </div>
-            )}
-
-            {/* Riepilogo Totale */}
-            {accumuliAttivi.length > 0 && (
-                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <div className="flex justify-between items-center">
-                        <span className="text-blue-900 font-semibold">Totale Accantonato</span>
-                        <span className="text-2xl font-bold text-blue-900">
-                            € {accumuliAttivi.reduce((acc, a) => acc + calcolaSaldoAccumulo(a.id).saldo, 0).toFixed(2)}
-                        </span>
-                    </div>
                 </div>
             )}
 
