@@ -127,6 +127,19 @@ function App() {
         return unsubscribe;
     }, [user]);
 
+    // Aggiorna il titolo della pagina in base alla view
+    React.useEffect(() => {
+        const titles = {
+            'transactions': 'Finanze',
+            'categorie': 'Categorie',
+            'accumuli': 'Fondi',
+            'reminder': 'Reminder',
+            'analytics': 'Analytics',
+            'admin': 'Admin'
+        };
+        document.title = `${titles[view] || 'Tracker Spese'} | Tracker Spese`;
+    }, [view]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-screen">
@@ -259,7 +272,7 @@ function App() {
                         className={`flex flex-col items-center p-2 rounded flex-1 ${view === 'accumuli' ? 'text-blue-600 bg-blue-50' : 'text-gray-600'}`}
                     >
                         <span className="text-2xl">🏦</span>
-                        <span className="text-xs mt-1">Accumuli</span>
+                        <span className="text-xs mt-1">Fondi</span>
                     </button>
                     
                     <button 

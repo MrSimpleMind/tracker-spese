@@ -3,18 +3,53 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
     
     if (!transaction) return null;
     
+    // Determina il tipo con retro-compatibilità
+    const tipoEffettivo = transaction.tipo === 'accumulo' ? 'movimento_fondo' : transaction.tipo;
+    
     const tipoConfig = {
         spesa: { label: 'Spesa', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-500', lightBg: 'bg-red-50', border: 'border-red-500' },
         entrata: { label: 'Entrata', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-500', lightBg: 'bg-green-50', border: 'border-green-500' },
-        accumulo: { label: 'Accumulo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-500', lightBg: 'bg-blue-50', border: 'border-blue-500' }
+        movimento_fondo: { label: 'Movimento Fondo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-500', lightBg: 'bg-blue-50', border: 'border-blue-500' }
     };
 
-    const config = tipoConfig[transaction.tipo || 'spesa'];
+    const config = tipoConfig[tipoEffettivo || 'spesa'];
     
-    // Trova la categoria per mostrare l'emoji se disponibile
+    // Trova la categoria per mostrare l'emoji
     const categoria = categorie.find(cat => cat.nome === transaction.categoria);
     
+    // Badge speciale per movimenti fondo
+    let movimentoBadge = null;
+    if (tipoEffettivo === 'movimento_fondo') {
+        const tipoMovimento = transaction.tipoMovimentoFondo || transaction.tipoOperazioneAccumulo || 'versamento';
+        const isVersamento = tipoMovimento === 'versamento';
+        const isTrasferimento = transaction.transferGroupId;
+        
+        movimentoBadge = {
+            label: isTrasferimento 
+                ? (isVersamento ? 'Trasferimento (in)' : 'Trasferimento (out)')
+                : (isVersamento ? 'Versamento' : 'Prelievo'),
+            icon: isTrasferimento 
+                ? '🔄'
+                : (isVersamento ? '➕' : '➖'),
+            bg: isVersamento ? 'bg-green-100' : 'bg-orange-100',
+            color: isVersamento ? 'text-green-800' : 'text-orange-800'
+        };
+    }
+    
     const handleDelete = async () => {
+        // Se è parte di un trasferimento, avvisa l'utente
+        if (transaction.transferGroupId) {
+            const confirmazione = confirm(
+                '⚠️ Questa transazione fa parte di un trasferimento tra fondi. ' +
+                'Eliminarla potrebbe sbilanciare il trasferimento. ' +
+                'Confermi di voler procedere comunque?'
+            );
+            if (!confirmazione) {
+                setShowDeleteConfirm(false);
+                return;
+            }
+        }
+        
         await onDelete(transaction.id);
         onClose();
     };
@@ -34,6 +69,11 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
         });
     };
 
+    // Nome del fondo (se è movimento_fondo)
+    const nomeFondo = tipoEffettivo === 'movimento_fondo' 
+        ? (transaction.nomeAccumulo || transaction.categoria) 
+        : null;
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50" onClick={onClose}>
             <div 
@@ -47,9 +87,9 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                             <span className="text-4xl">{config.icon}</span>
                             <div>
                                 <h3 className="text-xl font-bold">{config.label}</h3>
-                                {transaction.tipo === 'accumulo' && transaction.nomeAccumulo && (
+                                {movimentoBadge && (
                                     <p className="text-sm opacity-90 mt-0.5">
-                                        {transaction.tipoOperazioneAccumulo === 'versamento' ? '➕' : '➖'} {transaction.nomeAccumulo}
+                                        {movimentoBadge.icon} {movimentoBadge.label}
                                     </p>
                                 )}
                             </div>
@@ -67,7 +107,7 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                     {/* Importo grande */}
                     <div className="mt-4">
                         <p className="text-4xl font-bold">
-                            {transaction.tipo === 'entrata' ? '+' : transaction.tipo === 'spesa' ? '-' : ''}
+                            {tipoEffettivo === 'entrata' ? '+' : tipoEffettivo === 'spesa' ? '-' : ''}
                             €{parseFloat(transaction.importo).toFixed(2)}
                         </p>
                     </div>
@@ -84,12 +124,18 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                         </div>
                     </div>
 
-                    {/* Categoria */}
+                    {/* Fondo (se movimento_fondo) o Categoria (se spesa/entrata) */}
                     <div className="flex items-start gap-3">
-                        <div className="text-2xl">{categoria?.emoji || '📁'}</div>
+                        <div className="text-2xl">
+                            {tipoEffettivo === 'movimento_fondo' ? '🏦' : (categoria?.emoji || '📁')}
+                        </div>
                         <div className="flex-1">
-                            <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Categoria</p>
-                            <p className="text-gray-900 font-medium">{transaction.categoria}</p>
+                            <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">
+                                {tipoEffettivo === 'movimento_fondo' ? 'Fondo' : 'Categoria'}
+                            </p>
+                            <p className="text-gray-900 font-medium">
+                                {tipoEffettivo === 'movimento_fondo' ? nomeFondo : transaction.categoria}
+                            </p>
                         </div>
                     </div>
 
@@ -104,21 +150,26 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                         </div>
                     )}
 
-                    {/* Mostra dettagli accumulo specifici */}
-                    {transaction.tipo === 'accumulo' && (
-                        <>
-                            {transaction.tipoOperazioneAccumulo && (
-                                <div className="flex items-start gap-3">
-                                    <div className="text-2xl">
-                                        {transaction.tipoOperazioneAccumulo === 'versamento' ? '➕' : '➖'}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Tipo operazione</p>
-                                        <p className="text-gray-900 font-medium capitalize">{transaction.tipoOperazioneAccumulo}</p>
-                                    </div>
+                    {/* Info trasferimento */}
+                    {transaction.transferGroupId && (
+                        <div className={`${config.lightBg} border-l-4 ${config.border} p-3 rounded`}>
+                            <div className="flex items-start gap-2">
+                                <span className="text-lg">🔄</span>
+                                <div className="flex-1">
+                                    <p className={`text-sm font-medium ${config.color} mb-1`}>Parte di un trasferimento</p>
+                                    {transaction.transferTo && (
+                                        <p className="text-xs text-gray-700">
+                                            Verso: {categorie.find(c => c.id === transaction.transferTo)?.nome || 'Fondo'}
+                                        </p>
+                                    )}
+                                    {transaction.transferFrom && (
+                                        <p className="text-xs text-gray-700">
+                                            Da: {categorie.find(c => c.id === transaction.transferFrom)?.nome || 'Fondo'}
+                                        </p>
+                                    )}
                                 </div>
-                            )}
-                        </>
+                            </div>
+                        </div>
                     )}
 
                     {/* Nota (se presente) */}
@@ -136,6 +187,15 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                     {transaction.isTemplate && (
                         <div className={`${config.lightBg} border-l-4 ${config.border} p-3 rounded`}>
                             <p className={`text-sm font-medium ${config.color}`}>⚙️ Transazione da template ricorrente</p>
+                        </div>
+                    )}
+
+                    {/* Info movimenti fondo */}
+                    {tipoEffettivo === 'movimento_fondo' && (
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                            <p className="text-xs text-blue-900">
+                                <strong>💡 Questo movimento non impatta il cash flow</strong> - è un accantonamento che modifica solo il saldo del fondo.
+                            </p>
                         </div>
                     )}
                 </div>
@@ -184,6 +244,11 @@ function DettaglioTransazioneModal({ transaction, onClose, onEdit, onDelete, cat
                                 <br/>
                                 <span className="font-semibold">Questa azione non può essere annullata.</span>
                             </p>
+                            {transaction.transferGroupId && (
+                                <p className="text-sm text-orange-700 mt-2 bg-orange-50 p-2 rounded">
+                                    Questa transazione fa parte di un trasferimento tra fondi.
+                                </p>
+                            )}
                         </div>
                         
                         <div className="flex gap-3">

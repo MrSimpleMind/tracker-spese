@@ -83,7 +83,9 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const tipoConfig = {
         spesa: { label: 'Spese', icon: '💸', color: 'text-red-600', bgColor: 'bg-red-500', lightBg: 'bg-red-50', border: 'border-red-500' },
         entrata: { label: 'Entrate', icon: '💰', color: 'text-green-600', bgColor: 'bg-green-500', lightBg: 'bg-green-50', border: 'border-green-500' },
-        accumulo: { label: 'Accumuli', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-500', lightBg: 'bg-blue-50', border: 'border-blue-500' }
+        movimento_fondo: { label: 'Movimenti Fondo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-500', lightBg: 'bg-blue-50', border: 'border-blue-500' },
+        // Retro-compatibilità
+        accumulo: { label: 'Movimenti Fondo', icon: '🏦', color: 'text-blue-600', bgColor: 'bg-blue-500', lightBg: 'bg-blue-50', border: 'border-blue-500' }
     };
 
     // Controlla se ci sono filtri attivi
@@ -200,12 +202,16 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     transactionsOrdinate.map(transaction => {
                         const config = tipoConfig[transaction.tipo || 'spesa'];
                         
-                        // Badge speciale per accumuli
-                        let accumuloBadge = null;
-                        if (transaction.tipo === 'accumulo') {
-                            const isVersamento = transaction.tipoOperazioneAccumulo === 'versamento';
-                            accumuloBadge = {
-                                label: isVersamento ? 'Versamento' : 'Prelievo',
+                        // Badge speciale per movimenti fondo
+                        let movimentoBadge = null;
+                        if (transaction.tipo === 'accumulo' || transaction.tipo === 'movimento_fondo') {
+                            const tipoMovimento = transaction.tipoMovimentoFondo || transaction.tipoOperazioneAccumulo || 'versamento';
+                            const isVersamento = tipoMovimento === 'versamento';
+                            const isTrasferimento = transaction.transferGroupId;
+                            movimentoBadge = {
+                                label: isTrasferimento 
+                                    ? (isVersamento ? '🔄 In' : '🔄 Out')
+                                    : (isVersamento ? 'Versamento' : 'Prelievo'),
                                 icon: isVersamento ? '➕' : '➖'
                             };
                         }
@@ -223,9 +229,9 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                             <span>{config.icon}</span>
                                             <span className="hidden sm:inline">{config.label}</span>
                                         </span>
-                                        {accumuloBadge && (
+                                        {movimentoBadge && (
                                             <span className="text-xs text-gray-600 whitespace-nowrap">
-                                                {accumuloBadge.icon} {accumuloBadge.label}
+                                                {movimentoBadge.icon} {movimentoBadge.label}
                                             </span>
                                         )}
                                         <div className="flex-1 min-w-0">

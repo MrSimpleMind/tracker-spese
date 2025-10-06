@@ -1,37 +1,45 @@
 function AccumuliView({ transactions, categorie }) {
-    const [showAddAccumulo, setShowAddAccumulo] = React.useState(false);
-    const [showOperazione, setShowOperazione] = React.useState(null);
-    const [editingAccumulo, setEditingAccumulo] = React.useState(null);
+    const [editingFondo, setEditingFondo] = React.useState(null);
     const [showArchiviati, setShowArchiviati] = React.useState(false);
+    const [showAddFondo, setShowAddFondo] = React.useState(false);
+    const [fondoLedger, setFondoLedger] = React.useState(null); // Per mostrare il ledger
 
-    // Filtra gli accumuli attivi e archiviati
-    const accumuliAttivi = categorie.filter(cat => cat.isAccumulo && !cat.archiviato);
-    const accumuliArchiviati = categorie.filter(cat => cat.isAccumulo && cat.archiviato);
+    // Filtra i fondi (ex accumuli) attivi e archiviati
+    const fondiAttivi = categorie.filter(cat => cat.isAccumulo && !cat.archiviato);
+    const fondiArchiviati = categorie.filter(cat => cat.isAccumulo && cat.archiviato);
 
-    // Calcola il saldo di ogni accumulo
-    const calcolaSaldoAccumulo = (categoriaId) => {
+    // Calcola il saldo di ogni fondo
+    const calcolaSaldoFondo = (categoriaId) => {
         const operazioni = transactions.filter(t => 
-            t.tipo === 'accumulo' && t.categoria === categoriaId
+            (t.tipo === 'accumulo' || t.tipo === 'movimento_fondo') && 
+            (t.categoria === categoriaId || t.fondoId === categoriaId)
         );
         
         const versamenti = operazioni
-            .filter(t => t.tipoOperazioneAccumulo === 'versamento')
+            .filter(t => {
+                const tipoOp = t.tipoMovimentoFondo || t.tipoOperazioneAccumulo;
+                return tipoOp === 'versamento';
+            })
             .reduce((acc, t) => acc + parseFloat(t.importo), 0);
         
         const prelievi = operazioni
-            .filter(t => t.tipoOperazioneAccumulo === 'prelievo')
+            .filter(t => {
+                const tipoOp = t.tipoMovimentoFondo || t.tipoOperazioneAccumulo;
+                return tipoOp === 'prelievo';
+            })
             .reduce((acc, t) => acc + parseFloat(t.importo), 0);
         
         return {
             saldo: versamenti - prelievi,
             versamenti,
             prelievi,
-            numeroOperazioni: operazioni.length
+            numeroOperazioni: operazioni.length,
+            operazioni
         };
     };
 
-    const archiviaAccumulo = async (id, nome) => {
-        if (!confirm(`Vuoi archiviare l'accumulo "${nome}"? Verrà nascosto dall'interfaccia ma tutti i dati rimarranno salvati e potrai ripristinarlo in futuro.`)) {
+    const archiviaFondo = async (id, nome) => {
+        if (!confirm(`Vuoi archiviare il fondo "${nome}"? Verrà nascosto dall'interfaccia ma tutti i dati rimarranno salvati e potrai ripristinarlo in futuro.`)) {
             return;
         }
         
@@ -42,20 +50,23 @@ function AccumuliView({ transactions, categorie }) {
         });
     };
 
-    const eliminaAccumuloDefinitivamente = async (id, nome) => {
-        if (!confirm(`⚠️ ATTENZIONE: Vuoi eliminare DEFINITIVAMENTE l'accumulo "${nome}"? Questa azione NON può essere annullata. Le transazioni registrate rimarranno visibili in "Finanze" per lo storico.`)) {
+    const eliminaFondoDefinitivamente = async (id, nome) => {
+        const { numeroOperazioni } = calcolaSaldoFondo(id);
+        
+        if (numeroOperazioni > 0) {
+            alert(`⚠️ Questo fondo ha ${numeroOperazioni} operazioni registrate. Non puoi eliminarlo. Archivialo invece.`);
             return;
         }
         
-        if (!confirm(`Sei ASSOLUTAMENTE SICURO di voler eliminare definitivamente "${nome}"?`)) {
+        if (!confirm(`⚠️ ATTENZIONE: Vuoi eliminare DEFINITIVAMENTE il fondo "${nome}"? Questa azione NON può essere annullata.`)) {
             return;
         }
         
         await db.collection('categorie').doc(id).delete();
     };
 
-    const ripristinaAccumulo = async (id, nome) => {
-        if (!confirm(`Vuoi ripristinare l'accumulo "${nome}"? Tornerà visibile tra gli accumuli attivi.`)) {
+    const ripristinaFondo = async (id, nome) => {
+        if (!confirm(`Vuoi ripristinare il fondo "${nome}"? Tornerà visibile tra i fondi attivi.`)) {
             return;
         }
         
@@ -67,8 +78,8 @@ function AccumuliView({ transactions, categorie }) {
     };
 
     // Calcolo totale accantonato
-    const totaleAccantonato = accumuliAttivi.reduce((acc, a) => 
-        acc + calcolaSaldoAccumulo(a.id).saldo, 0
+    const totaleAccantonato = fondiAttivi.reduce((acc, f) => 
+        acc + calcolaSaldoFondo(f.id).saldo, 0
     );
 
     return (
@@ -77,10 +88,10 @@ function AccumuliView({ transactions, categorie }) {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
                 <div className="flex items-center justify-between mb-3">
                     <div>
-                        <h2 className="text-lg font-semibold text-gray-900">🏦 Accumuli</h2>
+                        <h2 className="text-lg font-semibold text-gray-900">🏦 Fondi</h2>
                         <p className="text-sm text-gray-600 mt-0.5">Gestisci i tuoi fondi accantonati</p>
                     </div>
-                    {accumuliAttivi.length > 0 && (
+                    {fondiAttivi.length > 0 && (
                         <div className="text-right">
                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Totale</p>
                             <p className="text-xl font-bold text-blue-600">€{totaleAccantonato.toFixed(2)}</p>
@@ -93,66 +104,66 @@ function AccumuliView({ transactions, categorie }) {
                     <div className="flex items-start gap-2">
                         <span className="text-lg">💡</span>
                         <div className="text-xs text-blue-900">
-                            <p className="font-semibold mb-0.5">Cosa sono gli Accumuli?</p>
-                            <p>Fondi accantonati per obiettivi specifici. Le spese pagate da accumuli <strong>non impattano il cash flow</strong>.</p>
+                            <p className="font-semibold mb-0.5">Cosa sono i Fondi?</p>
+                            <p>Fondi accantonati per obiettivi specifici. I movimenti dei fondi <strong>non impattano il cash flow</strong>. Per creare/modificare transazioni dei fondi, vai alla pagina <strong>Finanze</strong>.</p>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Pulsante nuovo accumulo */}
+            {/* Pulsante nuovo fondo */}
             <button
-                onClick={() => setShowAddAccumulo(true)}
+                onClick={() => setShowAddFondo(true)}
                 className="w-full bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-600 shadow-sm mb-4 flex items-center justify-center gap-2"
             >
                 <span className="text-xl">➕</span>
-                <span>Nuovo Accumulo</span>
+                <span>Nuovo Fondo</span>
             </button>
 
-            {/* Lista Accumuli Attivi */}
+            {/* Lista Fondi Attivi */}
             <div className="space-y-3">
-                {accumuliAttivi.length === 0 ? (
+                {fondiAttivi.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-gray-200">
                         <p className="text-4xl mb-2">🏦</p>
-                        <p className="font-medium">Nessun accumulo creato</p>
-                        <p className="text-sm mt-1">Crea il primo accumulo per iniziare</p>
+                        <p className="font-medium">Nessun fondo creato</p>
+                        <p className="text-sm mt-1">Crea il primo fondo per iniziare</p>
                     </div>
                 ) : (
-                    accumuliAttivi.map(accumulo => {
-                        const { saldo, versamenti, prelievi, numeroOperazioni } = calcolaSaldoAccumulo(accumulo.id);
+                    fondiAttivi.map(fondo => {
+                        const { saldo, versamenti, prelievi, numeroOperazioni, operazioni } = calcolaSaldoFondo(fondo.id);
                         
                         return (
-                            <div key={accumulo.id} className="bg-white rounded-lg shadow-sm border-l-4 border-blue-500 overflow-hidden">
+                            <div key={fondo.id} className="bg-white rounded-lg shadow-sm border-l-4 border-blue-500 overflow-hidden">
                                 {/* Header */}
                                 <div className="p-4 border-b border-gray-100">
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="text-base font-semibold text-gray-900 mb-0.5">{accumulo.nome}</h3>
-                                            {accumulo.descrizione && (
-                                                <p className="text-sm text-gray-600 line-clamp-2">{accumulo.descrizione}</p>
+                                            <h3 className="text-base font-semibold text-gray-900 mb-0.5">{fondo.nome}</h3>
+                                            {fondo.descrizione && (
+                                                <p className="text-sm text-gray-600 line-clamp-2">{fondo.descrizione}</p>
                                             )}
                                         </div>
                                         <div className="flex gap-1">
                                             <button
-                                                onClick={() => setEditingAccumulo(accumulo)}
+                                                onClick={() => setEditingFondo(fondo)}
                                                 className="text-gray-400 hover:text-blue-600 p-1.5 rounded hover:bg-blue-50"
-                                                title="Modifica"
+                                                title="Modifica fondo"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                                 </svg>
                                             </button>
                                             <button
-                                                onClick={() => archiviaAccumulo(accumulo.id, accumulo.nome)}
+                                                onClick={() => archiviaFondo(fondo.id, fondo.nome)}
                                                 className="text-gray-400 hover:text-orange-600 p-1.5 rounded hover:bg-orange-50"
-                                                title="Archivia"
+                                                title="Archivia fondo"
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                                 </svg>
                                             </button>
                                             <button
-                                                onClick={() => eliminaAccumuloDefinitivamente(accumulo.id, accumulo.nome)}
+                                                onClick={() => eliminaFondoDefinitivamente(fondo.id, fondo.nome)}
                                                 className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50"
                                                 title="Elimina definitivamente"
                                             >
@@ -186,26 +197,16 @@ function AccumuliView({ transactions, categorie }) {
                                     </div>
                                 </div>
                                 
-                                {/* Pulsanti Azione */}
-                                <div className="p-3 bg-gray-50 grid grid-cols-2 gap-2">
+                                {/* Pulsante Ledger */}
+                                <div className="p-3 bg-gray-50">
                                     <button
-                                        onClick={() => setShowOperazione({ ...accumulo, tipo: 'versamento' })}
-                                        className="bg-green-600 text-white py-2 px-3 rounded-lg font-medium hover:bg-green-700 text-sm flex items-center justify-center gap-1.5"
+                                        onClick={() => setFondoLedger(fondo)}
+                                        className="w-full bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-lg font-medium hover:bg-gray-100 text-sm flex items-center justify-center gap-2"
                                     >
-                                        <span>➕</span>
-                                        <span>Versa</span>
-                                    </button>
-                                    <button
-                                        onClick={() => setShowOperazione({ ...accumulo, tipo: 'prelievo' })}
-                                        className={`py-2 px-3 rounded-lg font-medium text-sm flex items-center justify-center gap-1.5 ${
-                                            saldo <= 0 
-                                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                                : 'bg-orange-600 text-white hover:bg-orange-700'
-                                        }`}
-                                        disabled={saldo <= 0}
-                                    >
-                                        <span>➖</span>
-                                        <span>Preleva</span>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <span>Mostra Movimenti</span>
                                     </button>
                                 </div>
                             </div>
@@ -214,8 +215,8 @@ function AccumuliView({ transactions, categorie }) {
                 )}
             </div>
 
-            {/* Sezione Accumuli Archiviati */}
-            {accumuliArchiviati.length > 0 && (
+            {/* Sezione Fondi Archiviati */}
+            {fondiArchiviati.length > 0 && (
                 <div className="mt-4">
                     <button
                         onClick={() => setShowArchiviati(!showArchiviati)}
@@ -223,7 +224,7 @@ function AccumuliView({ transactions, categorie }) {
                     >
                         <span className="flex items-center gap-2">
                             <span>📦</span>
-                            <span>Accumuli Archiviati ({accumuliArchiviati.length})</span>
+                            <span>Fondi Archiviati ({fondiArchiviati.length})</span>
                         </span>
                         <svg className={`w-4 h-4 transition-transform ${showArchiviati ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -232,25 +233,25 @@ function AccumuliView({ transactions, categorie }) {
                     
                     {showArchiviati && (
                         <div className="space-y-3 mt-3">
-                            {accumuliArchiviati.map(accumulo => {
-                                const { saldo, versamenti, prelievi, numeroOperazioni } = calcolaSaldoAccumulo(accumulo.id);
+                            {fondiArchiviati.map(fondo => {
+                                const { saldo, versamenti, prelievi, numeroOperazioni } = calcolaSaldoFondo(fondo.id);
                                 
                                 return (
-                                    <div key={accumulo.id} className="bg-white rounded-lg shadow-sm border-l-4 border-gray-400 opacity-75">
+                                    <div key={fondo.id} className="bg-white rounded-lg shadow-sm border-l-4 border-gray-400 opacity-75">
                                         <div className="p-4 border-b border-gray-100">
                                             <div className="flex justify-between items-start gap-3">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="text-base font-semibold text-gray-700">{accumulo.nome}</h3>
+                                                        <h3 className="text-base font-semibold text-gray-700">{fondo.nome}</h3>
                                                         <span className="text-xs px-2 py-0.5 bg-gray-200 text-gray-600 rounded">Archiviato</span>
                                                     </div>
-                                                    {accumulo.descrizione && (
-                                                        <p className="text-sm text-gray-500">{accumulo.descrizione}</p>
+                                                    {fondo.descrizione && (
+                                                        <p className="text-sm text-gray-500">{fondo.descrizione}</p>
                                                     )}
                                                 </div>
                                                 <div className="flex gap-1">
                                                     <button
-                                                        onClick={() => ripristinaAccumulo(accumulo.id, accumulo.nome)}
+                                                        onClick={() => ripristinaFondo(fondo.id, fondo.nome)}
                                                         className="text-gray-400 hover:text-green-600 p-1.5 rounded hover:bg-green-50"
                                                         title="Ripristina"
                                                     >
@@ -259,7 +260,7 @@ function AccumuliView({ transactions, categorie }) {
                                                         </svg>
                                                     </button>
                                                     <button
-                                                        onClick={() => eliminaAccumuloDefinitivamente(accumulo.id, accumulo.nome)}
+                                                        onClick={() => eliminaFondoDefinitivamente(fondo.id, fondo.nome)}
                                                         className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50"
                                                         title="Elimina definitivamente"
                                                     >
@@ -298,26 +299,137 @@ function AccumuliView({ transactions, categorie }) {
                 </div>
             )}
 
-            {/* Modali */}
-            {showAddAccumulo && (
+            {/* Modale Ledger */}
+            {fondoLedger && (
+                <LedgerFondoModal
+                    fondo={fondoLedger}
+                    transactions={calcolaSaldoFondo(fondoLedger.id).operazioni}
+                    onClose={() => setFondoLedger(null)}
+                />
+            )}
+
+            {/* Modali CRUD Fondi */}
+            {showAddFondo && (
                 <AddAccumuloModal 
-                    onClose={() => setShowAddAccumulo(false)}
+                    onClose={() => setShowAddFondo(false)}
                 />
             )}
 
-            {showOperazione && (
-                <OperazioneAccumuloModal 
-                    accumulo={showOperazione}
-                    onClose={() => setShowOperazione(null)}
-                />
-            )}
-
-            {editingAccumulo && (
+            {editingFondo && (
                 <EditAccumuloModal 
-                    accumulo={editingAccumulo}
-                    onClose={() => setEditingAccumulo(null)}
+                    accumulo={editingFondo}
+                    onClose={() => setEditingFondo(null)}
                 />
             )}
+        </div>
+    );
+}
+
+// Modale Ledger Fondo (in sola lettura)
+function LedgerFondoModal({ fondo, transactions, onClose }) {
+    // Ordina per data (più recente prima)
+    const transactionsOrdinate = [...transactions].sort((a, b) => 
+        new Date(b.data) - new Date(a.data)
+    );
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50" onClick={onClose}>
+            <div 
+                className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto shadow-xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                {/* Header */}
+                <div className="sticky top-0 bg-blue-500 text-white p-4 border-b border-blue-600 rounded-t-2xl">
+                    <div className="flex justify-between items-center mb-2">
+                        <div>
+                            <h3 className="text-xl font-bold">📋 Movimenti del Fondo</h3>
+                            <p className="text-sm opacity-90 mt-0.5">{fondo.nome}</p>
+                        </div>
+                        <button 
+                            onClick={onClose}
+                            className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-2 transition-colors"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Info Box */}
+                <div className="p-4 bg-blue-50 border-b border-blue-100">
+                    <p className="text-xs text-blue-900">
+                        <strong>💡 Visualizzazione in sola lettura</strong> - Per modificare o creare movimenti, vai alla pagina <strong>Finanze</strong> e usa "Movimento Fondo".
+                    </p>
+                </div>
+
+                {/* Lista transazioni */}
+                <div className="p-4">
+                    {transactionsOrdinate.length === 0 ? (
+                        <div className="text-center py-12 text-gray-400">
+                            <p className="text-4xl mb-2">📭</p>
+                            <p>Nessun movimento registrato</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {transactionsOrdinate.map(transaction => {
+                                const tipoMovimento = transaction.tipoMovimentoFondo || transaction.tipoOperazioneAccumulo || 'versamento';
+                                const isVersamento = tipoMovimento === 'versamento';
+                                const isTrasferimento = transaction.transferGroupId;
+                                
+                                return (
+                                    <div 
+                                        key={transaction.id} 
+                                        className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${
+                                            isVersamento ? 'border-green-500' : 'border-orange-500'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                                                        isVersamento ? 'bg-green-50 text-green-700' : 'bg-orange-50 text-orange-700'
+                                                    }`}>
+                                                        {isVersamento ? '➕ Versamento' : '➖ Prelievo'}
+                                                    </span>
+                                                    {isTrasferimento && (
+                                                        <span className="text-xs px-2 py-0.5 rounded bg-purple-50 text-purple-700 font-medium">
+                                                            🔄 Trasferimento
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="font-medium text-gray-900">{transaction.descrizione}</p>
+                                                <p className="text-xs text-gray-500 mt-0.5">
+                                                    {new Date(transaction.data).toLocaleDateString('it-IT', {
+                                                        day: 'numeric',
+                                                        month: 'long',
+                                                        year: 'numeric'
+                                                    })}
+                                                </p>
+                                            </div>
+                                            <p className={`text-lg font-bold whitespace-nowrap ${
+                                                isVersamento ? 'text-green-600' : 'text-orange-600'
+                                            }`}>
+                                                {isVersamento ? '+' : '-'}€{parseFloat(transaction.importo).toFixed(2)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-4 rounded-b-2xl">
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700"
+                    >
+                        Chiudi
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }
