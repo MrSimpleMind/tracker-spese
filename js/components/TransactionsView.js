@@ -149,9 +149,11 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     <div className="flex items-center justify-center gap-4 pt-2 border-t border-gray-100">
                         <button
                             onClick={() => setShowGrafico(true)}
-                            className="flex items-center gap-1.5 py-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            className="flex items-center gap-1.5 py-2 text-sm text-gray-600 hover:text-gray-700 font-medium"
                         >
-                            <span>📊</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                            </svg>
                             <span>Mostra andamento</span>
                         </button>
                         
@@ -191,8 +193,8 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 </button>
             </div>
 
-            {/* Lista transazioni - CARD SUPER COMPATTE */}
-            <div className="space-y-2">
+            {/* Lista transazioni */}
+            <div className="divide-y divide-gray-200">
                 {transactionsOrdinate.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                         <p className="text-4xl mb-2">📭</p>
@@ -220,25 +222,28 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                             <div 
                                 key={transaction.id} 
                                 onClick={() => setDetailTransaction(transaction)}
-                                className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${config.border} cursor-pointer hover:shadow-md transition-shadow`}
+                                className="bg-white py-3 px-2 cursor-pointer hover:bg-gray-50 transition-colors"
                             >
-                                <div className="flex items-center justify-between gap-2">
-                                    {/* Badge e importo */}
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <span className={`text-xs px-1.5 py-0.5 rounded ${config.lightBg} ${config.color} font-medium whitespace-nowrap flex items-center gap-1`}>
-                                            <span>{config.icon}</span>
-                                            <span className="hidden sm:inline">{config.label}</span>
-                                        </span>
-                                        {movimentoBadge && (
-                                            <span className="text-xs text-gray-600 whitespace-nowrap">
-                                                {movimentoBadge.icon} {movimentoBadge.label}
+                                <div className="flex items-center justify-between gap-3">
+                                    {/* Info transazione */}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className={`text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium whitespace-nowrap flex items-center gap-1`}>
+                                                <span>{config.icon}</span>
+                                                <span className="hidden sm:inline">{config.label}</span>
                                             </span>
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-xs text-gray-500 truncate">
-                                                {transaction.categoria} • {new Date(transaction.data).toLocaleDateString('it-IT')}
-                                            </p>
+                                            {movimentoBadge && (
+                                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                    {movimentoBadge.icon} {movimentoBadge.label}
+                                                </span>
+                                            )}
                                         </div>
+                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                            {transaction.categoria}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {new Date(transaction.data).toLocaleDateString('it-IT')}
+                                        </p>
                                     </div>
                                     
                                     {/* Importo e icona */}

@@ -90,21 +90,22 @@ function AnalyticsView({ transactions }) {
     }, [entrate, accumuli]);
 
     // 4. Patrimonio Accumulato (somma accumuli - prelievi)
+    // IMPORTANTE: usa TUTTE le transactions, non solo quelle del periodo filtrato
     const patrimonioAccumulato = React.useMemo(() => {
-        return accumuli.reduce((acc, t) => {
+        const tuttiAccumuli = transactions.filter(t => t.tipo === 'accumulo' || t.tipo === 'movimento_fondo');
+        return tuttiAccumuli.reduce((acc, t) => {
             const importo = parseFloat(t.importo);
-            return t.tipoOperazioneAccumulo === 'prelievo' ? acc - importo : acc + importo;
+            const tipoMovimento = t.tipoMovimentoFondo || t.tipoOperazioneAccumulo || 'versamento';
+            return tipoMovimento === 'prelievo' ? acc - importo : acc + importo;
         }, 0);
-    }, [accumuli]);
+    }, [transactions]);
 
     // 5. Runway (quanto duri con accumuli al ritmo spese medio)
     const runway = React.useMemo(() => {
         if (spese.length === 0) return 0;
         
-        const totaleAccumuli = accumuli.reduce((acc, t) => {
-            const importo = parseFloat(t.importo);
-            return t.tipoOperazioneAccumulo === 'prelievo' ? acc - importo : acc + importo;
-        }, 0);
+        // Usa il patrimonio accumulato TOTALE (già calcolato sopra)
+        const totaleAccumuli = patrimonioAccumulato;
         const totaleSpese = spese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
         
         // Calcola giorni del periodo
@@ -120,7 +121,7 @@ function AnalyticsView({ transactions }) {
         
         if (spesaMediaGiornaliera === 0) return 0;
         return totaleAccumuli / spesaMediaGiornaliera; // giorni di runway
-    }, [spese, accumuli]);
+    }, [spese, patrimonioAccumulato]);
 
     const totaleEntrate = entrate.reduce((acc, t) => acc + parseFloat(t.importo), 0);
     const totaleSpese = spese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
