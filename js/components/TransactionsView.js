@@ -2,13 +2,13 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const [ordinamento, setOrdinamento] = React.useState('data-recente');
     const [showTemplateModal, setShowTemplateModal] = React.useState(false);
     const [templateToInsert, setTemplateToInsert] = React.useState(null);
-    const [showFiltersModal, setShowFiltersModal] = React.useState(false); // Modale filtri
+    const [showFiltersModal, setShowFiltersModal] = React.useState(false);
+    const [meseSelezionato, setMeseSelezionato] = React.useState(new Date()); // Mese corrente di default
     
     // Filtra categorie attive (non archiviati) per i filtri
     const categorieAttive = categorie.filter(cat => !cat.archiviato);
     
     // Il filtro tipo ora è un array di tipi selezionati
-    // Se l'array è vuoto, mostra tutto
     const transactionsFiltrate = React.useMemo(() => {
         let filtrate = transactions;
         
@@ -41,56 +41,40 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         }
     });
 
-    // Calcoli per il mese corrente
-    const oggi = new Date();
-    const meseCorrente = oggi.getMonth();
-    const annoCorrente = oggi.getFullYear();
+    // Funzioni per navigare i mesi
+    const mesePrecedente = () => {
+        setMeseSelezionato(new Date(meseSelezionato.getFullYear(), meseSelezionato.getMonth() - 1, 1));
+    };
+
+    const meseSuccessivo = () => {
+        setMeseSelezionato(new Date(meseSelezionato.getFullYear(), meseSelezionato.getMonth() + 1, 1));
+    };
+
+    const nomiMesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
+                      'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+    // Calcoli per il mese selezionato
+    const meseCorrente = meseSelezionato.getMonth();
+    const annoCorrente = meseSelezionato.getFullYear();
     
-    const transactionsQuestoMese = transactions.filter(t => {
+    const transactionsMeseSelezionato = transactions.filter(t => {
         const dataTransaction = new Date(t.data);
         return dataTransaction.getMonth() === meseCorrente && dataTransaction.getFullYear() === annoCorrente;
     });
     
-    const transactionsMeseScorso = transactions.filter(t => {
-        const dataTransaction = new Date(t.data);
-        const meseScorso = meseCorrente === 0 ? 11 : meseCorrente - 1;
-        const annoMeseScorso = meseCorrente === 0 ? annoCorrente - 1 : annoCorrente;
-        return dataTransaction.getMonth() === meseScorso && dataTransaction.getFullYear() === annoMeseScorso;
-    });
+    // Separa per tipo per i calcoli
+    const speseMese = transactionsMeseSelezionato.filter(t => t.tipo === 'spesa');
+    const entrateMese = transactionsMeseSelezionato.filter(t => t.tipo === 'entrata');
     
-    // Separa per tipo per i calcoli - ACCUMULI ESCLUSI DAL CASH FLOW
-    const speseQuestoMese = transactionsQuestoMese.filter(t => t.tipo === 'spesa');
-    const entrateQuestoMese = transactionsQuestoMese.filter(t => t.tipo === 'entrata');
-    const accumuliQuestoMese = transactionsQuestoMese.filter(t => t.tipo === 'accumulo');
-    
-    const speseMeseScorso = transactionsMeseScorso.filter(t => t.tipo === 'spesa');
-    const entrateMeseScorso = transactionsMeseScorso.filter(t => t.tipo === 'entrata');
-    
-    const totaleSpese = speseQuestoMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    const totaleEntrate = entrateQuestoMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    
-    // Calcola versamenti e prelievi accumuli separatamente
-    const versamentiAccumuli = accumuliQuestoMese
-        .filter(t => t.tipoOperazioneAccumulo === 'versamento')
-        .reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    const prelieviAccumuli = accumuliQuestoMese
-        .filter(t => t.tipoOperazioneAccumulo === 'prelievo')
-        .reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    
-    const totaleSpeseMeseScorso = speseMeseScorso.reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    const totaleEntrateMeseScorso = entrateMeseScorso.reduce((acc, t) => acc + parseFloat(t.importo), 0);
-    
-    // Cash flow: Entrate - Spese (accumuli neutrali)
-    const cashFlowQuestoMese = totaleEntrate - totaleSpese;
-    const cashFlowMeseScorso = totaleEntrateMeseScorso - totaleSpeseMeseScorso;
-    const differenzaCashFlow = cashFlowQuestoMese - cashFlowMeseScorso;
-    const percentualeCashFlow = cashFlowMeseScorso !== 0 ? ((differenzaCashFlow / Math.abs(cashFlowMeseScorso)) * 100).toFixed(1) : 0;
+    const totaleSpese = speseMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+    const totaleEntrate = entrateMese.reduce((acc, t) => acc + parseFloat(t.importo), 0);
+    const saldo = totaleEntrate - totaleSpese;
 
     // Totale transazioni filtrate (per visualizzazione)
     const totaleFiltrato = transactionsFiltrate.reduce((acc, t) => {
         if (t.tipo === 'spesa') return acc - parseFloat(t.importo);
         if (t.tipo === 'entrata') return acc + parseFloat(t.importo);
-        return acc; // accumuli neutrali nel totale visualizzato
+        return acc;
     }, 0);
 
     const eliminaTransaction = async (id) => {
@@ -107,103 +91,88 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
 
     // Controlla se ci sono filtri attivi
     const hasFiltriAttivi = (filtroTipo && filtroTipo.length > 0 && filtroTipo.length < 3) || filtroCategoria !== 'tutte' || ordinamento !== 'data-recente';
-    
-    // Mostra accumuli solo se sono nel filtro tipo o se non ci sono filtri
-    const mostraAccumuli = !filtroTipo || filtroTipo.length === 0 || filtroTipo.includes('accumulo');
 
     return (
         <div className="fade-in">
-            {/* Summary Card - PRIMA COSA SOTTO HEADER */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 mb-4 shadow-lg">
-                {(!filtroTipo || filtroTipo.length === 0) && filtroCategoria === 'tutte' ? (
-                    <>
-                        <div className="mb-3">
-                            <p className="text-xs opacity-90 mb-1">Questo mese</p>
-                            <div className="grid grid-cols-2 gap-2 text-center mb-2">
-                                <div>
-                                    <p className="text-xs opacity-75">💰 Entrate</p>
-                                    <p className="text-lg font-bold">€ {totaleEntrate.toFixed(2)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs opacity-75">💸 Spese</p>
-                                    <p className="text-lg font-bold">€ {totaleSpese.toFixed(2)}</p>
-                                </div>
-                            </div>
-                            {(versamentiAccumuli > 0 || prelieviAccumuli > 0) && (
-                                <div className="grid grid-cols-2 gap-2 text-center border-t border-blue-500 pt-2 mt-2">
-                                    <div>
-                                        <p className="text-xs opacity-75">➕ Versamenti</p>
-                                        <p className="text-sm font-bold">€ {versamentiAccumuli.toFixed(2)}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-75">➖ Prelievi</p>
-                                        <p className="text-sm font-bold">€ {prelieviAccumuli.toFixed(2)}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="border-t border-blue-500 pt-3">
-                            <p className="text-xs opacity-75 mb-1">💵 Cash Flow</p>
-                            <p className={`text-3xl font-bold ${cashFlowQuestoMese >= 0 ? 'text-white' : 'text-red-200'}`}>
-                                {cashFlowQuestoMese >= 0 ? '+' : ''}€ {cashFlowQuestoMese.toFixed(2)}
-                            </p>
-                            {cashFlowMeseScorso !== 0 && (
-                                <div className={`text-center py-2 px-3 rounded mt-2 ${differenzaCashFlow >= 0 ? 'bg-green-500' : 'bg-red-500'} bg-opacity-30`}>
-                                    <span className="font-bold">
-                                        {differenzaCashFlow >= 0 ? '↑' : '↓'} {Math.abs(percentualeCashFlow)}%
-                                    </span>
-                                    <span className="text-xs ml-2">
-                                        vs mese scorso
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <button
-                            onClick={() => setShowGrafico(true)}
-                            className="w-full bg-white bg-opacity-20 hover:bg-opacity-30 py-2 px-4 rounded text-sm font-medium mt-3"
-                        >
-                            📊 Mostra Andamento
-                        </button>
-                    </>
-                ) : (
-                    <>
-                        <p className="text-xs opacity-90 mb-1">
-                            {filtroTipo && filtroTipo.length > 0 
-                                ? filtroTipo.map(tipo => tipoConfig[tipo].label).join(', ')
-                                : 'Tutte'
-                            }
-                            {filtroCategoria !== 'tutte' ? ` - ${filtroCategoria}` : ''}
-                        </p>
-                        <p className="text-3xl font-bold">
-                            {totaleFiltrato >= 0 ? '+' : ''}€ {Math.abs(totaleFiltrato).toFixed(2)}
-                        </p>
-                        <p className="text-xs opacity-75 mt-1">{transactionsFiltrate.length} transazioni</p>
-                    </>
-                )}
-            </div>
+            {/* Header con selettore mese e filtri - STILE MINIMALE */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
+                {/* Navigatore mese */}
+                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                    <button 
+                        onClick={mesePrecedente}
+                        className="text-gray-600 hover:text-gray-900 p-2"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    
+                    <h2 className="text-lg font-semibold text-gray-900">
+                        {nomiMesi[meseCorrente]}, {annoCorrente}
+                    </h2>
+                    
+                    <button 
+                        onClick={meseSuccessivo}
+                        className="text-gray-600 hover:text-gray-900 p-2"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
 
-            {/* Pulsante Filtri */}
-            <div className="mb-4">
-                <button
-                    onClick={() => setShowFiltersModal(true)}
-                    className={`w-full py-3 px-4 rounded-lg font-medium shadow flex items-center justify-between ${
-                        hasFiltriAttivi 
-                            ? 'bg-blue-600 text-white' 
-                            : 'bg-white text-gray-700 border border-gray-300'
-                    }`}
-                >
-                    <div className="flex items-center gap-2">
-                        <span className="text-lg">🔍</span>
-                        <span>Filtri e ordinamento</span>
+                {/* Statistiche mese + pulsante filtri */}
+                <div className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 grid grid-cols-3 gap-4 text-center">
+                            {/* Spese */}
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Spese</p>
+                                <p className="text-xl font-bold text-red-600">
+                                    €{totaleSpese.toFixed(2)}
+                                </p>
+                            </div>
+                            
+                            {/* Entrate */}
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Entrate</p>
+                                <p className="text-xl font-bold text-green-600">
+                                    €{totaleEntrate.toFixed(2)}
+                                </p>
+                            </div>
+                            
+                            {/* Saldo */}
+                            <div>
+                                <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Saldo</p>
+                                <p className={`text-xl font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {saldo >= 0 ? '+' : ''}€{saldo.toFixed(2)}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {/* Icona filtri */}
+                        <button
+                            onClick={() => setShowFiltersModal(true)}
+                            className={`ml-3 p-2 rounded-lg ${
+                                hasFiltriAttivi 
+                                    ? 'bg-blue-600 text-white' 
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </button>
                     </div>
-                    {hasFiltriAttivi && (
-                        <span className="bg-white text-blue-600 px-2 py-0.5 rounded-full text-xs font-bold">
-                            Attivi
-                        </span>
-                    )}
-                </button>
+
+                    {/* Pulsante grafico */}
+                    <button
+                        onClick={() => setShowGrafico(true)}
+                        className="w-full py-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                        📊 Mostra andamento
+                    </button>
+                </div>
             </div>
 
             {/* Pulsanti inserimento - PIÙ COMPATTI */}
@@ -216,7 +185,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     className="bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-600 shadow flex items-center justify-center gap-2"
                 >
                     <span className="text-xl">➕</span>
-                    <span>Nuova operazione</span>
+                    <span>Aggiungi</span>
                 </button>
                 <button
                     onClick={() => setShowTemplateModal(true)}
@@ -326,14 +295,11 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                                 key={key}
                                                 onClick={() => {
                                                     if (!filtroTipo || filtroTipo.length === 0) {
-                                                        // Se non ci sono filtri, inizia con questo tipo
                                                         setFiltroTipo([key]);
                                                     } else if (isSelected) {
-                                                        // Rimuovi se già selezionato
                                                         const newFiltro = filtroTipo.filter(t => t !== key);
                                                         setFiltroTipo(newFiltro.length === 0 ? [] : newFiltro);
                                                     } else {
-                                                        // Aggiungi
                                                         setFiltroTipo([...filtroTipo, key]);
                                                     }
                                                 }}
