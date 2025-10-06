@@ -7,6 +7,9 @@ function AddSpesaModal({ onClose, categorie, fromTemplate = null }) {
     const [loading, setLoading] = React.useState(false);
     const [templateId] = React.useState(fromTemplate?.id || null);
 
+    // Filtra solo categorie normali (non accumuli archiviati)
+    const categorieDisponibili = categorie.filter(cat => !cat.isAccumulo || !cat.archiviato);
+
     const calcolaProssimaScadenza = () => {
         if (!fromTemplate) return null;
         
@@ -114,7 +117,7 @@ function AddSpesaModal({ onClose, categorie, fromTemplate = null }) {
                             required
                         >
                             <option value="">Seleziona categoria</option>
-                            {categorie.map(cat => (
+                            {categorieDisponibili.map(cat => (
                                 <option key={cat.id} value={cat.nome}>
                                     {cat.nome}
                                 </option>

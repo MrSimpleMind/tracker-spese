@@ -4,6 +4,9 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const [templateToInsert, setTemplateToInsert] = React.useState(null);
     const [mostraAccumuli, setMostraAccumuli] = React.useState(true); // Toggle per mostrare/nascondere accumuli
     
+    // Filtra categorie attive (non archiviati) per i filtri
+    const categorieAttive = categorie.filter(cat => !cat.archiviato);
+    
     // Filtra per tipo E categoria E toggle accumuli
     const transactionsFiltrate = React.useMemo(() => {
         let filtrate = transactions;
@@ -156,7 +159,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
             </div>
 
             {/* Filtri per categoria */}
-            {categorie.length > 0 && (
+            {categorieAttive.length > 0 && (
                 <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
                     <button
                         onClick={() => setFiltroCategoria('tutte')}
@@ -164,7 +167,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     >
                         Tutte le categorie
                     </button>
-                    {categorie.map(cat => (
+                    {categorieAttive.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => setFiltroCategoria(cat.nome)}
