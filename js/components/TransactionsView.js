@@ -4,6 +4,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const [templateToInsert, setTemplateToInsert] = React.useState(null);
     const [showFiltersModal, setShowFiltersModal] = React.useState(false);
     const [meseSelezionato, setMeseSelezionato] = React.useState(new Date());
+    const [detailTransaction, setDetailTransaction] = React.useState(null); // Modale dettaglio
     
     // Filtra categorie attive (non archiviati) per i filtri
     const categorieAttive = categorie.filter(cat => !cat.archiviato);
@@ -75,17 +76,8 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         return num % 1 === 0 ? `€${num.toFixed(0)}` : `€${num.toFixed(2)}`;
     };
 
-    // Totale transazioni filtrate (per visualizzazione)
-    const totaleFiltrato = transactionsFiltrate.reduce((acc, t) => {
-        if (t.tipo === 'spesa') return acc - parseFloat(t.importo);
-        if (t.tipo === 'entrata') return acc + parseFloat(t.importo);
-        return acc;
-    }, 0);
-
     const eliminaTransaction = async (id) => {
-        if (confirm('Vuoi eliminare questa transazione?')) {
-            await db.collection('transactions').doc(id).delete();
-        }
+        await db.collection('transactions').doc(id).delete();
     };
 
     const tipoConfig = {
@@ -99,7 +91,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
 
     return (
         <div className="fade-in">
-            {/* Header con selettore mese e filtri - STILE MINIMALE */}
+            {/* Header con selettore mese e filtri */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
                 {/* Navigatore mese */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-100">
@@ -126,11 +118,9 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     </button>
                 </div>
 
-                {/* Statistiche mese - OTTIMIZZATO */}
+                {/* Statistiche mese */}
                 <div className="p-4">
-                    {/* Numeri - Occupano tutto lo spazio disponibile */}
                     <div className="grid grid-cols-3 gap-3 text-center mb-3">
-                        {/* Spese */}
                         <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Spese</p>
                             <p className="text-base font-bold text-red-600">
@@ -138,7 +128,6 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                             </p>
                         </div>
                         
-                        {/* Entrate */}
                         <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Entrate</p>
                             <p className="text-base font-bold text-green-600">
@@ -146,7 +135,6 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                             </p>
                         </div>
                         
-                        {/* Saldo */}
                         <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Saldo</p>
                             <p className={`text-base font-bold ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
@@ -155,7 +143,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                         </div>
                     </div>
 
-                    {/* Pulsanti grafico e filtri - sulla stessa riga */}
+                    {/* Pulsanti grafico e filtri */}
                     <div className="flex items-center justify-center gap-4 pt-2 border-t border-gray-100">
                         <button
                             onClick={() => setShowGrafico(true)}
@@ -168,9 +156,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                         <button
                             onClick={() => setShowFiltersModal(true)}
                             className={`flex items-center gap-1.5 py-2 text-sm font-medium ${
-                                hasFiltriAttivi 
-                                    ? 'text-blue-600' 
-                                    : 'text-gray-600 hover:text-gray-700'
+                                hasFiltriAttivi ? 'text-blue-600' : 'text-gray-600 hover:text-gray-700'
                             }`}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,7 +168,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 </div>
             </div>
 
-            {/* Pulsanti inserimento - PIÙ COMPATTI */}
+            {/* Pulsanti inserimento */}
             <div className="grid grid-cols-2 gap-2 mb-4">
                 <button
                     onClick={() => {
@@ -203,7 +189,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 </button>
             </div>
 
-            {/* Lista transazioni - CARD OTTIMIZZATE */}
+            {/* Lista transazioni - CARD SUPER COMPATTE */}
             <div className="space-y-2">
                 {transactionsOrdinate.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
@@ -219,69 +205,63 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                         if (transaction.tipo === 'accumulo') {
                             const isVersamento = transaction.tipoOperazioneAccumulo === 'versamento';
                             accumuloBadge = {
-                                label: isVersamento ? '➕ Versamento' : '➖ Prelievo',
-                                bg: isVersamento ? 'bg-green-100' : 'bg-orange-100',
-                                color: isVersamento ? 'text-green-800' : 'text-orange-800'
+                                label: isVersamento ? 'Versamento' : 'Prelievo',
+                                icon: isVersamento ? '➕' : '➖'
                             };
                         }
                         
                         return (
-                            <div key={transaction.id} className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${config.border}`}>
-                                {/* Prima riga: Badge + Descrizione + Importo + Azioni */}
-                                <div className="flex items-start justify-between gap-2 mb-1.5">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-1.5 mb-1">
-                                            <span className={`text-xs px-1.5 py-0.5 rounded ${config.lightBg} ${config.color} font-medium whitespace-nowrap`}>
-                                                {config.icon} {config.label}
+                            <div 
+                                key={transaction.id} 
+                                onClick={() => setDetailTransaction(transaction)}
+                                className={`bg-white rounded-lg p-3 shadow-sm border-l-4 ${config.border} cursor-pointer hover:shadow-md transition-shadow`}
+                            >
+                                <div className="flex items-center justify-between gap-2">
+                                    {/* Badge e importo */}
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <span className={`text-xs px-1.5 py-0.5 rounded ${config.lightBg} ${config.color} font-medium whitespace-nowrap flex items-center gap-1`}>
+                                            <span>{config.icon}</span>
+                                            <span className="hidden sm:inline">{config.label}</span>
+                                        </span>
+                                        {accumuloBadge && (
+                                            <span className="text-xs text-gray-600 whitespace-nowrap">
+                                                {accumuloBadge.icon} {accumuloBadge.label}
                                             </span>
-                                            {accumuloBadge && (
-                                                <span className={`text-xs px-1.5 py-0.5 rounded ${accumuloBadge.bg} ${accumuloBadge.color} font-medium whitespace-nowrap`}>
-                                                    {accumuloBadge.label}
-                                                </span>
-                                            )}
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-xs text-gray-500 truncate">
+                                                {transaction.categoria} • {new Date(transaction.data).toLocaleDateString('it-IT')}
+                                            </p>
                                         </div>
-                                        <p className="font-bold text-base text-gray-800 truncate">{transaction.descrizione}</p>
                                     </div>
                                     
-                                    {/* Importo e azioni */}
-                                    <div className="flex items-start gap-2">
-                                        <p className={`text-lg font-bold ${config.color} whitespace-nowrap`}>
+                                    {/* Importo e icona */}
+                                    <div className="flex items-center gap-2">
+                                        <p className={`text-base font-bold ${config.color} whitespace-nowrap`}>
                                             {transaction.tipo === 'entrata' ? '+' : transaction.tipo === 'spesa' ? '-' : ''}
                                             €{parseFloat(transaction.importo).toFixed(2)}
                                         </p>
-                                        <div className="flex gap-0.5">
-                                            <button
-                                                onClick={() => setEditingTransaction(transaction)}
-                                                className="text-blue-500 hover:text-blue-700 p-1 text-sm"
-                                            >
-                                                ✏️
-                                            </button>
-                                            <button
-                                                onClick={() => eliminaTransaction(transaction.id)}
-                                                className="text-red-500 hover:text-red-700 p-1 text-sm"
-                                            >
-                                                🗑️
-                                            </button>
-                                        </div>
+                                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
                                     </div>
                                 </div>
-                                
-                                {/* Seconda riga: Categoria + Data */}
-                                <div className="text-xs text-gray-500 flex items-center gap-1.5">
-                                    <span>{transaction.categoria}</span>
-                                    <span>•</span>
-                                    <span>{new Date(transaction.data).toLocaleDateString('it-IT')}</span>
-                                </div>
-                                
-                                {/* Nota se presente */}
-                                {transaction.nota && (
-                                    <p className="text-xs text-gray-600 mt-1.5 italic">{transaction.nota}</p>
-                                )}
                             </div>
                         );
                     })
                 )}
             </div>
+
+            {/* Modale Dettaglio */}
+            {detailTransaction && (
+                <DettaglioTransazioneModal
+                    transaction={detailTransaction}
+                    onClose={() => setDetailTransaction(null)}
+                    onEdit={setEditingTransaction}
+                    onDelete={eliminaTransaction}
+                    categorie={categorie}
+                />
+            )}
 
             {/* Modale Filtri */}
             {showFiltersModal && (
@@ -289,20 +269,12 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                     <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
                         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
                             <h3 className="text-lg font-bold text-gray-900">🔍 Filtri e ordinamento</h3>
-                            <button
-                                onClick={() => setShowFiltersModal(false)}
-                                className="text-gray-500 hover:text-gray-700 text-2xl"
-                            >
-                                ×
-                            </button>
+                            <button onClick={() => setShowFiltersModal(false)} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
                         </div>
                         
                         <div className="p-4 space-y-6">
-                            {/* Filtro tipo operazione - SELEZIONE MULTIPLA */}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-3">
-                                    Tipo di operazione
-                                </label>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">Tipo di operazione</label>
                                 <div className="space-y-2">
                                     {Object.entries(tipoConfig).map(([key, config]) => {
                                         const isSelected = filtroTipo && filtroTipo.includes(key);
@@ -335,39 +307,28 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                     })}
                                 </div>
                                 {filtroTipo && filtroTipo.length > 0 && (
-                                    <button
-                                        onClick={() => setFiltroTipo([])}
-                                        className="mt-2 text-sm text-blue-600 hover:text-blue-800 underline"
-                                    >
+                                    <button onClick={() => setFiltroTipo([])} className="mt-2 text-sm text-blue-600 hover:text-blue-800 underline">
                                         Mostra tutte le operazioni
                                     </button>
                                 )}
                             </div>
 
-                            {/* Filtro categoria */}
                             {categorieAttive.length > 0 && (
                                 <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-3">
-                                        Categoria
-                                    </label>
+                                    <label className="block text-sm font-bold text-gray-700 mb-3">Categoria</label>
                                     <select
                                         value={filtroCategoria}
                                         onChange={(e) => setFiltroCategoria(e.target.value)}
                                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700"
                                     >
                                         <option value="tutte">Tutte le categorie</option>
-                                        {categorieAttive.map(cat => (
-                                            <option key={cat.id} value={cat.nome}>{cat.nome}</option>
-                                        ))}
+                                        {categorieAttive.map(cat => <option key={cat.id} value={cat.nome}>{cat.nome}</option>)}
                                     </select>
                                 </div>
                             )}
 
-                            {/* Ordinamento */}
                             <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-3">
-                                    Ordinamento
-                                </label>
+                                <label className="block text-sm font-bold text-gray-700 mb-3">Ordinamento</label>
                                 <select
                                     value={ordinamento}
                                     onChange={(e) => setOrdinamento(e.target.value)}
@@ -380,7 +341,6 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                 </select>
                             </div>
 
-                            {/* Pulsanti azione */}
                             <div className="flex gap-2 pt-4 border-t border-gray-200">
                                 <button
                                     onClick={() => {
