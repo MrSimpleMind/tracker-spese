@@ -245,6 +245,20 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                         <p className="text-sm font-medium text-gray-900 truncate">
                                             {transaction.categoria}
                                         </p>
+                                        {transaction.contoId && (() => {
+                                            const conto = categorie.find(c => c.id === transaction.contoId);
+                                            return conto ? (
+                                                <p className="text-xs text-gray-600 flex items-center gap-1 mt-0.5">
+                                                    <span>{conto.emoji || '💳'}</span>
+                                                    <span>{conto.nome}</span>
+                                                </p>
+                                            ) : null;
+                                        })()}
+                                        {!transaction.contoId && transaction.tipo !== 'movimento_fondo' && transaction.tipo !== 'accumulo' && (
+                                            <p className="text-xs text-orange-500 mt-0.5">
+                                                🔍 Conto non assegnato
+                                            </p>
+                                        )}
                                         <p className="text-xs text-gray-500">
                                             {new Date(transaction.data).toLocaleDateString('it-IT')}
                                         </p>

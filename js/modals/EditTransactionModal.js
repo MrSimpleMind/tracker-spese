@@ -16,6 +16,26 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
     const fondoInizialeId = transaction.fondoId || '';
     const [fondoSelezionato, setFondoSelezionato] = React.useState(fondoInizialeId);
 
+    // Stato per Conti
+    const contoInizialeId = transaction.contoId || '';
+    const [contoSelezionato, setContoSelezionato] = React.useState(contoInizialeId);
+    const [conti, setConti] = React.useState([]);
+
+    // Carica i conti da Firebase
+    React.useEffect(() => {
+        const unsubscribe = db.collection('conti')
+            .where('archiviato', '==', false)
+            .orderBy('nome')
+            .onSnapshot(snapshot => {
+                const contiData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setConti(contiData);
+            });
+        return () => unsubscribe();
+    }, []);
+
     // Filtra i fondi
     const fondi = categorie.filter(cat => cat.isAccumulo && !cat.archiviato);
 
@@ -59,6 +79,7 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
                 importo: parseFloat(importo),
                 data,
                 nota,
+                contoId: contoSelezionato || null,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
             
@@ -109,7 +130,7 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
                 {isTransferimento && (
                     <div className="p-4 bg-orange-50 border-b border-orange-200">
                         <p className="text-sm text-orange-900">
-                            <strong>⚠️ Trasferimento tra fondi</strong> - Questa transazione fa parte di un trasferimento. Modificando questa transazione, il trasferimento potrebbe risultare sbilanciato.
+                            <strong>⚠️ Trasferimento</strong> - Questa transazione fa parte di un trasferimento tra conti/fondi. Modificando questa transazione, il trasferimento potrebbe risultare sbilanciato.
                         </p>
                     </div>
                 )}
@@ -246,6 +267,30 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
                             {categorieDisponibili.length === 0 && (
                                 <p className="text-xs text-orange-600 mt-1">
                                     ⚠️ Nessuna categoria disponibile per questo tipo
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Selezione Conto (opzionale per spese/entrate) */}
+                    {tipo !== 'movimento_fondo' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Conto (opzionale)</label>
+                            <select
+                                value={contoSelezionato}
+                                onChange={(e) => setContoSelezionato(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Nessun conto specifico</option>
+                                {conti.map(conto => (
+                                    <option key={conto.id} value={conto.id}>
+                                        {conto.emoji && `${conto.emoji} `}{conto.nome}
+                                    </option>
+                                ))}
+                            </select>
+                            {conti.length === 0 && (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    💡 Nessun conto disponibile. Creane uno nella sezione Conti!
                                 </p>
                             )}
                         </div>

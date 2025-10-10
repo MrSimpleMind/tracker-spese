@@ -10,7 +10,7 @@ Tracker Finanze Famiglia e una Progressive Web App privata per tracciare entrate
 - Service worker con strategia network-first e manifest dedicato
 
 ## Navigazione e funzionalita
-- **Autenticazione**: login email/password con persistenza locale; il pulsante Admin compare solo per `monzalcolica@gmail.com`.
+- **Autenticazione**: login email/password con persistenza locale; il pulsante Admin compare solo per amministratore app.
 - **Finanze**: lista unica delle transazioni con filtri multipli, ordinamenti, dettaglio, modifica, eliminazione e grafico andamento.
 - **Template ricorrenti**: gestione di template mensili, bimestrali o annuali; quick review automatica quando `prossimaScadenza` e trascorsa.
 - **Categorie**: creazione, modifica, archiviazione e ripristino; ogni categoria definisce i tipi supportati (`spesa`, `entrata`, `movimento_fondo`).

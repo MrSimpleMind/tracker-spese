@@ -13,9 +13,20 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
     const [fondoSelezionato, setFondoSelezionato] = React.useState('');
     const [fondoDa, setFondoDa] = React.useState(''); // per trasferimenti
     const [fondoA, setFondoA] = React.useState(''); // per trasferimenti
+    
+    // Stati per Conti
+    const [contoId, setContoId] = React.useState(''); // Conto per spese/entrate
+    const [contoAssociatoId, setContoAssociatoId] = React.useState(''); // Conto associato per movimenti fondo
 
-    // Filtra i fondi (categorie con isAccumulo=true, ora chiamati "Fondi")
-    const fondi = categorie.filter(cat => cat.isAccumulo && !cat.archiviato);
+    // Filtra i fondi (categorie con isAccumulo=true o tipoContenitore='fondo')
+    const fondi = categorie.filter(cat => 
+        (cat.isAccumulo || cat.tipoContenitore === 'fondo') && !cat.archiviato
+    );
+    
+    // Filtra i conti (categorie con tipoContenitore='conto')
+    const conti = categorie.filter(cat => 
+        cat.tipoContenitore === 'conto' && !cat.archiviato
+    );
 
     // Filtra categorie normali in base al tipo selezionato
     const categorieDisponibili = React.useMemo(() => {
@@ -97,53 +108,84 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                 }
             }
 
-            // CASO TRASFERIMENTO TRA FONDI: crea due transazioni atomiche
+            // CASO TRASFERIMENTO: crea due transazioni atomiche (supporta conti E fondi)
             if (tipo === 'movimento_fondo' && tipoMovimentoFondo === 'trasferimento') {
                 const transferGroupId = `transfer_${Date.now()}`;
                 const batch = db.batch();
                 
-                const nomeFondoDa = fondi.find(f => f.id === fondoDa)?.nome || fondoDa;
-                const nomeFondoA = fondi.find(f => f.id === fondoA)?.nome || fondoA;
+                // Parse origine e destinazione (formato: "conto-{id}" o "fondo-{id}")
+                const [tipoDa, idDa] = fondoDa.split('-');
+                const [tipoA, idA] = fondoA.split('-');
                 
-                // Transazione 1: Prelievo da Fondo A
+                // Trova i nomi
+                const nomeDa = tipoDa === 'conto' 
+                    ? conti.find(c => c.id === idDa)?.nome 
+                    : fondi.find(f => f.id === idDa)?.nome;
+                const nomeA = tipoA === 'conto'
+                    ? conti.find(c => c.id === idA)?.nome
+                    : fondi.find(f => f.id === idA)?.nome;
+                
+                // Transazione 1: Uscita dall'origine
                 const ref1 = db.collection('transactions').doc();
-                batch.set(ref1, {
-                    tipo: 'movimento_fondo',
-                    tipoMovimentoFondo: 'prelievo',
-                    descrizione: descrizione || `Trasferimento a ${nomeFondoA}`,
+                const trans1 = {
                     importo: parseFloat(importo),
-                    categoria: nomeFondoDa, // Il nome del fondo diventa la categoria
-                    fondoId: fondoDa,
                     data,
-                    nota: nota || `Trasferimento da ${nomeFondoDa} a ${nomeFondoA}`,
+                    nota: nota || `Trasferimento da ${nomeDa} a ${nomeA}`,
                     transferGroupId,
                     transferTo: fondoA,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    userId: auth.currentUser.uid,
-                    // Retro-compatibilità con vecchio sistema
-                    tipoOperazioneAccumulo: 'prelievo',
-                    nomeAccumulo: nomeFondoDa
-                });
+                    userId: auth.currentUser.uid
+                };
                 
-                // Transazione 2: Versamento su Fondo B
+                if (tipoDa === 'conto') {
+                    // Da Conto: è una spesa
+                    trans1.tipo = 'spesa';
+                    trans1.categoria = 'Trasferimento';
+                    trans1.contoId = idDa;
+                    trans1.descrizione = descrizione || `Trasferimento a ${nomeA}`;
+                } else {
+                    // Da Fondo: è un prelievo fondo
+                    trans1.tipo = 'movimento_fondo';
+                    trans1.tipoMovimentoFondo = 'prelievo';
+                    trans1.categoria = nomeDa;
+                    trans1.fondoId = idDa;
+                    trans1.descrizione = descrizione || `Trasferimento a ${nomeA}`;
+                    // Retro-compatibilità
+                    trans1.tipoOperazioneAccumulo = 'prelievo';
+                    trans1.nomeAccumulo = nomeDa;
+                }
+                batch.set(ref1, trans1);
+                
+                // Transazione 2: Entrata nella destinazione
                 const ref2 = db.collection('transactions').doc();
-                batch.set(ref2, {
-                    tipo: 'movimento_fondo',
-                    tipoMovimentoFondo: 'versamento',
-                    descrizione: descrizione || `Trasferimento da ${nomeFondoDa}`,
+                const trans2 = {
                     importo: parseFloat(importo),
-                    categoria: nomeFondoA,
-                    fondoId: fondoA,
                     data,
-                    nota: nota || `Trasferimento da ${nomeFondoDa} a ${nomeFondoA}`,
+                    nota: nota || `Trasferimento da ${nomeDa} a ${nomeA}`,
                     transferGroupId,
                     transferFrom: fondoDa,
                     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    userId: auth.currentUser.uid,
+                    userId: auth.currentUser.uid
+                };
+                
+                if (tipoA === 'conto') {
+                    // A Conto: è un'entrata
+                    trans2.tipo = 'entrata';
+                    trans2.categoria = 'Trasferimento';
+                    trans2.contoId = idA;
+                    trans2.descrizione = descrizione || `Trasferimento da ${nomeDa}`;
+                } else {
+                    // A Fondo: è un versamento fondo
+                    trans2.tipo = 'movimento_fondo';
+                    trans2.tipoMovimentoFondo = 'versamento';
+                    trans2.categoria = nomeA;
+                    trans2.fondoId = idA;
+                    trans2.descrizione = descrizione || `Trasferimento da ${nomeDa}`;
                     // Retro-compatibilità
-                    tipoOperazioneAccumulo: 'versamento',
-                    nomeAccumulo: nomeFondoA
-                });
+                    trans2.tipoOperazioneAccumulo = 'versamento';
+                    trans2.nomeAccumulo = nomeA;
+                }
+                batch.set(ref2, trans2);
                 
                 await batch.commit();
                 
@@ -166,12 +208,18 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                     transactionData.categoria = nomeFondo; // Il fondo è la categoria
                     transactionData.fondoId = fondoSelezionato;
                     
+                    // Conto associato opzionale per movimenti fondo
+                    if (contoAssociatoId) {
+                        transactionData.contoId = contoAssociatoId;
+                    }
+                    
                     // Retro-compatibilità con vecchio sistema "accumulo"
                     transactionData.tipoOperazioneAccumulo = tipoMovimentoFondo;
                     transactionData.nomeAccumulo = nomeFondo;
                 } else {
-                    // Per spese/entrate, usa la categoria normale
+                    // Per spese/entrate, usa la categoria normale E il conto
                     transactionData.categoria = categoria;
+                    transactionData.contoId = contoId; // NUOVO: salva il conto
                 }
                 
                 // Se viene da template, aggiungi flag
@@ -313,39 +361,65 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                         </div>
                     )}
 
-                    {/* Selezione Fondi (se trasferimento) */}
+                    {/* Selezione Contenitori (se trasferimento) - UNIFICATO per conti e fondi */}
                     {tipo === 'movimento_fondo' && tipoMovimentoFondo === 'trasferimento' && (
                         <>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Da Fondo *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Da *</label>
                                 <select
                                     value={fondoDa}
                                     onChange={(e) => setFondoDa(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     required
                                 >
-                                    <option value="">Seleziona fondo di origine</option>
-                                    {fondi.map(fondo => (
-                                        <option key={fondo.id} value={fondo.id}>
-                                            {fondo.nome}
-                                        </option>
-                                    ))}
+                                    <option value="">Seleziona origine</option>
+                                    <optgroup label="💳 Conti">
+                                        {conti.map(conto => (
+                                            <option key={`conto-${conto.id}`} value={`conto-${conto.id}`}>
+                                                {conto.emoji && `${conto.emoji} `}{conto.nome}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="🏬 Fondi">
+                                        {fondi.map(fondo => (
+                                            <option key={`fondo-${fondo.id}`} value={`fondo-${fondo.id}`}>
+                                                {fondo.nome}
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">A Fondo *</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">A *</label>
                                 <select
                                     value={fondoA}
                                     onChange={(e) => setFondoA(e.target.value)}
                                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                                     required
                                 >
-                                    <option value="">Seleziona fondo di destinazione</option>
-                                    {fondi.map(fondo => (
-                                        <option key={fondo.id} value={fondo.id} disabled={fondo.id === fondoDa}>
-                                            {fondo.nome}
-                                        </option>
-                                    ))}
+                                    <option value="">Seleziona destinazione</option>
+                                    <optgroup label="💳 Conti">
+                                        {conti.map(conto => (
+                                            <option 
+                                                key={`conto-${conto.id}`} 
+                                                value={`conto-${conto.id}`}
+                                                disabled={`conto-${conto.id}` === fondoDa}
+                                            >
+                                                {conto.emoji && `${conto.emoji} `}{conto.nome}
+                                            </option>
+                                        ))}
+                                    </optgroup>
+                                    <optgroup label="🏬 Fondi">
+                                        {fondi.map(fondo => (
+                                            <option 
+                                                key={`fondo-${fondo.id}`} 
+                                                value={`fondo-${fondo.id}`}
+                                                disabled={`fondo-${fondo.id}` === fondoDa}
+                                            >
+                                                {fondo.nome}
+                                            </option>
+                                        ))}
+                                    </optgroup>
                                 </select>
                             </div>
                         </>
@@ -404,6 +478,57 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
                                     ⚠️ Nessuna categoria disponibile per questo tipo. Creane una nella sezione Categorie!
                                 </p>
                             )}
+                        </div>
+                    )}
+
+                    {/* Conto (per spese/entrate) */}
+                    {tipo !== 'movimento_fondo' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {tipo === 'spesa' ? 'Da quale conto?' : 'Su quale conto?'} *
+                            </label>
+                            <select
+                                value={contoId}
+                                onChange={(e) => setContoId(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                required
+                            >
+                                <option value="">Seleziona conto</option>
+                                {conti.map(conto => (
+                                    <option key={conto.id} value={conto.id}>
+                                        {conto.emoji && `${conto.emoji} `}{conto.nome}
+                                    </option>
+                                ))}
+                            </select>
+                            {conti.length === 0 && (
+                                <p className="text-xs text-orange-600 mt-1">
+                                    ⚠️ Nessun conto disponibile. Creane uno nella sezione Conti e Fondi!
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Conto Associato (opzionale per movimenti fondo) */}
+                    {tipo === 'movimento_fondo' && tipoMovimentoFondo !== 'trasferimento' && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                {tipoMovimentoFondo === 'versamento' ? 'Da quale conto?' : 'Su quale conto?'} (opzionale)
+                            </label>
+                            <select
+                                value={contoAssociatoId}
+                                onChange={(e) => setContoAssociatoId(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            >
+                                <option value="">Nessun conto associato</option>
+                                {conti.map(conto => (
+                                    <option key={conto.id} value={conto.id}>
+                                        {conto.emoji && `${conto.emoji} `}{conto.nome}
+                                    </option>
+                                ))}
+                            </select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Indica da/su quale conto stai effettuando il movimento
+                            </p>
                         </div>
                     )}
 
