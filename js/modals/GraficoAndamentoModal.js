@@ -145,60 +145,6 @@ function GraficoAndamentoModal({ transactions, onClose }) {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-4">
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                            <p className="text-xs text-green-700 font-medium mb-1">💰 Entrate Totali (6 mesi)</p>
-                            <p className="text-2xl font-bold text-green-700">
-                                € {transactions.filter(t => {
-                                    const data = new Date(t.data);
-                                    const seiMesiFa = new Date();
-                                    seiMesiFa.setMonth(seiMesiFa.getMonth() - 5);
-                                    return t.tipo === 'entrata' && data >= seiMesiFa;
-                                }).reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
-                            </p>
-                        </div>
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                            <p className="text-xs text-red-700 font-medium mb-1">💸 Spese Totali (6 mesi)</p>
-                            <p className="text-2xl font-bold text-red-700">
-                                € {transactions.filter(t => {
-                                    const data = new Date(t.data);
-                                    const seiMesiFa = new Date();
-                                    seiMesiFa.setMonth(seiMesiFa.getMonth() - 5);
-                                    return t.tipo === 'spesa' && data >= seiMesiFa;
-                                }).reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
-                            </p>
-                        </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                            <p className="text-xs text-blue-700 font-medium mb-1">🏦 Accumuli Totali (6 mesi)</p>
-                            <p className="text-2xl font-bold text-blue-700">
-                                € {transactions.filter(t => {
-                                    const data = new Date(t.data);
-                                    const seiMesiFa = new Date();
-                                    seiMesiFa.setMonth(seiMesiFa.getMonth() - 5);
-                                    return t.tipo === 'accumulo' && data >= seiMesiFa;
-                                }).reduce((acc, t) => acc + parseFloat(t.importo), 0).toFixed(2)}
-                            </p>
-                        </div>
-                        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                            <p className="text-xs text-purple-700 font-medium mb-1">💵 Cash Flow Netto (6 mesi)</p>
-                            <p className="text-2xl font-bold text-purple-700">
-                                € {(() => {
-                                    const seiMesiFa = new Date();
-                                    seiMesiFa.setMonth(seiMesiFa.getMonth() - 5);
-                                    const entrate = transactions.filter(t => {
-                                        const data = new Date(t.data);
-                                        return t.tipo === 'entrata' && data >= seiMesiFa;
-                                    }).reduce((acc, t) => acc + parseFloat(t.importo), 0);
-                                    const spese = transactions.filter(t => {
-                                        const data = new Date(t.data);
-                                        return t.tipo === 'spesa' && data >= seiMesiFa;
-                                    }).reduce((acc, t) => acc + parseFloat(t.importo), 0);
-                                    return (entrate - spese).toFixed(2);
-                                })()}
-                            </p>
-                        </div>
-                    </div>
-
                     <button
                         onClick={onClose}
                         className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700"
