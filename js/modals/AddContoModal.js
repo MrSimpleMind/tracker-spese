@@ -19,17 +19,21 @@ function AddContoModal({ onClose }) {
                 saldoIniziale: parseFloat(saldoIniziale),
                 saldoCorrente: parseFloat(saldoIniziale),
                 descrizione,
+                tipoContenitore: 'conto', // Importante: identifica questo come un conto
                 archiviato: false,
-                userId: auth.currentUser.uid,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            await db.collection('conti').add(newConto);
-            onClose();
+            await db.collection('categorie').add(newConto);
+            
+            // Piccolo delay per permettere a Firebase di completare
+            setTimeout(() => {
+                onClose();
+            }, 100);
         } catch (err) {
+            console.error('Errore nella creazione del conto:', err);
             alert('Errore nel creare il conto: ' + err.message);
-        } finally {
             setLoading(false);
         }
     };

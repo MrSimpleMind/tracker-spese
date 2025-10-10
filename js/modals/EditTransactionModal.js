@@ -21,16 +21,18 @@ function EditTransactionModal({ transaction, onClose, categorie }) {
     const [contoSelezionato, setContoSelezionato] = React.useState(contoInizialeId);
     const [conti, setConti] = React.useState([]);
 
-    // Carica i conti da Firebase
+    // Carica i conti da Firebase (dalla collection categorie)
     React.useEffect(() => {
-        const unsubscribe = db.collection('conti')
+        const unsubscribe = db.collection('categorie')
+            .where('tipoContenitore', '==', 'conto')
             .where('archiviato', '==', false)
-            .orderBy('nome')
             .onSnapshot(snapshot => {
                 const contiData = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
+                // Ordina per nome lato client (Firestore non supporta orderBy su più campi con where)
+                contiData.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
                 setConti(contiData);
             });
         return () => unsubscribe();

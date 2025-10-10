@@ -19,7 +19,7 @@ function EditContoModal({ conto, onClose }) {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            await db.collection('conti').doc(conto.id).update(updateData);
+            await db.collection('categorie').doc(conto.id).update(updateData);
             onClose();
         } catch (err) {
             alert('Errore nel modificare il conto: ' + err.message);
@@ -35,7 +35,7 @@ function EditContoModal({ conto, onClose }) {
 
         setLoading(true);
         try {
-            await db.collection('conti').doc(conto.id).update({
+            await db.collection('categorie').doc(conto.id).update({
                 archiviato: !conto.archiviato,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
