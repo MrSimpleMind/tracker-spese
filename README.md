@@ -1,198 +1,178 @@
-# Tracker Finanze Famiglia
+﻿# Tracker Finanze Famiglia
 
-App completa per gestire finanze familiari: entrate, spese, accumuli - Versione 3.0
+## Panoramica
+Tracker Finanze Famiglia e una Progressive Web App privata per tracciare entrate, spese, fondi accantonati e promemoria familiari. L'interfaccia e ottimizzata per dispositivi mobili, usa Firebase (Auth + Firestore) come backend e continua a funzionare offline tramite manifest e service worker.
 
-## 🎯 Novità Versione 3.0
+## Stack principale
+- React 18 e ReactDOM da CDN, compilati al volo con Babel standalone
+- Tailwind CSS per lo stile e Chart.js per la reportistica
+- Firebase Authentication e Firestore SDK compat
+- Service worker con strategia network-first e manifest dedicato
 
-- ✅ **Gestione completa**: Entrate, Spese e Accumuli
-- ✅ **Categorie flessibili**: Ogni categoria può applicarsi a uno o più tipi di transazione
-- ✅ **Template ricorrenti**: Supportano tutti i tipi (spesa, entrata, accumulo)
-- ✅ **Analytics potenziate**: Cash flow, tasso di risparmio, runway, e altro
-- ✅ **UI migliorata**: Colori distintivi e filtri multipli
-- ✅ **Vista unificata**: Tutte le transazioni in un'unica timeline
+## Navigazione e funzionalita
+- **Autenticazione**: login email/password con persistenza locale; il pulsante Admin compare solo per `monzalcolica@gmail.com`.
+- **Finanze**: lista unica delle transazioni con filtri multipli, ordinamenti, dettaglio, modifica, eliminazione e grafico andamento.
+- **Template ricorrenti**: gestione di template mensili, bimestrali o annuali; quick review automatica quando `prossimaScadenza` e trascorsa.
+- **Categorie**: creazione, modifica, archiviazione e ripristino; ogni categoria definisce i tipi supportati (`spesa`, `entrata`, `movimento_fondo`).
+- **Fondi (accumuli)**: riepilogo saldi, statistiche, ledger in sola lettura e archiviazione dei fondi non piu usati.
+- **Reminder**: promemoria con stato, importo stimato e badge per le scadenze; toggle completato con tracciamento della data.
+- **Analytics**: indicatori di cash flow, tasso di risparmio, runway, top categoria spese e riepilogo grafico degli ultimi sei mesi.
+- **Pannello Admin**: creazione rapida di account familiari con generatore di password e tracciamento locale (solo per uso interno).
+- **PWA e notifiche**: installabile, registra un service worker e richiede le notifiche quando supportate; fallback e log per Safari/iOS.
 
-## 📊 Funzionalità Principali
+## Flussi principali
+1. **Inserire una transazione**: dal tab Finanze aprire "Aggiungi", selezionare il tipo (`spesa`, `entrata`, `movimento_fondo`). I trasferimenti tra fondi creano due scritture legate da `transferGroupId`.
+2. **Gestire template scaduti**: il banner arancione apre la quick review per inserire o posticipare ogni template scaduto, aggiornando `prossimaScadenza`.
+3. **Archiviare o ripristinare**: nelle viste Categorie e Fondi e possibile archiviare, ripristinare o (per fondi senza movimenti) eliminare definitivamente.
+4. **Reminder**: i promemoria attivi sono ordinati per scadenza; la sezione "Completati" permette di riaprire o eliminare gli elementi gia gestiti.
 
-### 💰 Gestione Transazioni
-- **Spese**: Traccia le uscite (rosso 💸)
-- **Entrate**: Registra le entrate (verde 💰)
-- **Accumuli**: Monitora i risparmi (blu 🏦)
-- Filtri per tipo e categoria
-- Ordinamento flessibile
-- Template ricorrenti per transazioni ripetitive
-
-### 📁 Categorie Intelligenti
-- Sistema flessibile: ogni categoria può applicarsi a spese, entrate o accumuli
-- Esempi:
-  - "Alimentari" → solo Spese
-  - "Stipendio" → solo Entrate
-  - "Fondo emergenza" → solo Accumuli
-  - "Manutenzione auto" → Spese + Accumuli
-
-### 🔄 Template Ricorrenti
-- Mensili, bimestrali o annuali
-- Supportano tutti i tipi di transazione
-- Alert automatici alla scadenza
-- Quick review per inserimento veloce
-
-### 📊 Analytics Avanzate
-- **Cash Flow**: Entrate - Spese (accumuli neutrali)
-- **Tasso di Risparmio**: % accumuli su entrate
-- **Runway**: Quanto duri con i risparmi attuali
-- **Top Categoria**: Analisi delle spese principali
-- Grafici multi-linea con andamento temporale
-
-### 🔔 Reminder
-- Promemoria per scadenze
-- Notifiche per reminder scaduti
-
-## 🏗️ Architettura Dati
-
-### Collezione: `transactions`
-```javascript
-{
-  tipo: 'spesa' | 'entrata' | 'accumulo',
-  descrizione: string,
-  importo: number,
-  categoria: string,
-  data: string (ISO date),
-  nota: string,
-  isRicorrente: boolean,
-  templateId: string,
-  userId: string,
-  createdAt: timestamp
-}
-```
-
-### Collezione: `categorie`
-```javascript
-{
-  nome: string,
-  descrizione: string,
-  applicabileA: ['spesa', 'entrata', 'accumulo'],
-  createdAt: timestamp
-}
-```
-
-### Collezione: `template_ricorrenti`
-```javascript
-{
-  tipo: 'spesa' | 'entrata' | 'accumulo',
-  descrizione: string,
-  importoStimato: number,
-  categoria: string,
-  frequenza: 'mensile' | 'bimestrale' | 'annuale',
-  giornoMese: number,
-  prossimaScadenza: string (ISO date),
-  attivo: boolean,
-  userId: string
-}
-```
-
-## 📁 Struttura Progetto
-
+## Struttura del progetto
 ```
 tracker-spese/
-├── index.html              # Pagina principale
-├── manifest.json           # Configurazione PWA
-├── sw.js                   # Service Worker
-├── icon-192.png           # Icona app
-├── icon-512.png           # Icona app
-└── js/
-    ├── firebase-config.js  # Configurazione Firebase + fix iOS
-    ├── components/         # Componenti React
-    │   ├── App.js         # Componente principale
-    │   ├── LoginPage.js   # Pagina login
-    │   ├── TransactionsView.js # Vista transazioni (ex SpeseView)
-    │   ├── CategorieView.js
-    │   ├── ReminderView.js
-    │   ├── AnalyticsView.js
-    │   └── AdminView.js
-    └── modals/            # Modali
-        ├── AddTransactionModal.js
-        ├── EditTransactionModal.js
-        ├── GraficoAndamentoModal.js
-        ├── AddCategoriaModal.js
-        ├── EditCategoriaModal.js
-        ├── AddReminderModal.js
-        ├── EditReminderModal.js
-        ├── TemplateRicorrentiModal.js
-        ├── AddTemplateModal.js
-        ├── EditTemplateModal.js
-        ├── DettaglioTemplateModal.js
-        └── QuickReviewModal.js
+  index.html
+  manifest.json
+  sw.js
+  icon-192.png
+  icon-512.png
+  js/
+    firebase-config.js
+    components/
+      App.js                # root app e listener Firestore
+      LoginPage.js
+      TransactionsView.js
+      CategorieView.js
+      AccumuliView.js
+      ReminderView.js
+      AnalyticsView.js
+      AdminView.js
+      modals/DettaglioTransazioneModal.js (legacy)
+    modals/
+      AddTransactionModal.js
+      EditTransactionModal.js
+      GraficoAndamentoModal.js
+      AddCategoriaModal.js
+      EditCategoriaModal.js
+      AddAccumuloModal.js
+      EditAccumuloModal.js
+      OperazioneAccumuloModal.js
+      AddReminderModal.js
+      EditReminderModal.js
+      TemplateRicorrentiModal.js
+      AddTemplateModal.js
+      EditTemplateModal.js
+      DettaglioTemplateModal.js
+      QuickReviewModal.js
+      AddSpesaModal.js (legacy)
+      EditSpesaModal.js (legacy)
 ```
 
-## 🚀 Deploy su GitHub Pages
+## Configurazione iniziale
+1. **Firebase**  
+   - Creare un progetto, abilitare Authentication (email/password) e Firestore.  
+   - Aggiornare le chiavi in `js/firebase-config.js`.  
+   - Definire regole Firestore coerenti con le collezioni usate (transactions, categorie, template_ricorrenti, reminders, admin_users).
+2. **Utenti**  
+   - Creare almeno un account via console Firebase oppure con il pannello Admin.  
+   - L'utente admin e determinato dal controllo email in `App.js`.
 
-1. Carica tutti i file su GitHub
-2. Abilita GitHub Pages nelle impostazioni del repository
-3. L'app sarà disponibile su: `https://tuousername.github.io/tracker-spese/`
+## Esecuzione locale
+- Servire la cartella con un server statico (es. `python -m http.server 8000` o `npx serve`).  
+- Aprire `http://localhost:8000/tracker-spese/`.  
+- Per testare offline caricare l'app online una prima volta cosi il service worker popola la cache.
 
-## 🔧 Sviluppo Locale
+## Deploy
+1. Pubblicare tutti i file su un hosting statico (GitHub Pages, Netlify, ecc.).  
+2. Se il percorso di pubblicazione cambia, aggiornare `start_url` e `scope` in `manifest.json`, i riferimenti in `index.html` e la registrazione del service worker in `js/firebase-config.js`.  
+3. Dopo un aggiornamento importante incrementare `CACHE_NAME` in `sw.js` o svuotare la cache del browser.
 
-Per testare in locale:
-1. Usa un server locale (es: Live Server in VS Code)
-2. Oppure: `python -m http.server 8000`
-3. Apri: `http://localhost:8000/tracker-spese/`
+## Modello dati principale
+- **transactions**
+  ```
+  {
+    tipo: "spesa" | "entrata" | "movimento_fondo",
+    descrizione: string,
+    importo: number,
+    categoria: string,
+    data: "YYYY-MM-DD",
+    nota?: string,
+    tipoMovimentoFondo?: "versamento" | "prelievo",
+    fondoId?: string,
+    transferGroupId?: string,
+    transferFrom?: string,
+    transferTo?: string,
+    isRicorrente?: boolean,
+    templateId?: string,
+    tipoOperazioneAccumulo?: string,  // compatibilita precedente
+    nomeAccumulo?: string,            // compatibilita precedente
+    userId: string,
+    createdAt: timestamp,
+    updatedAt?: timestamp
+  }
+  ```
+- **categorie**
+  ```
+  {
+    nome: string,
+    descrizione?: string,
+    applicabileA: string[],
+    isAccumulo?: boolean,
+    obiettivo?: number,
+    archiviato?: boolean,
+    dataArchiviazione?: timestamp,
+    emoji?: string,
+    createdAt: timestamp,
+    updatedAt?: timestamp
+  }
+  ```
+- **template_ricorrenti**
+  ```
+  {
+    tipo: "spesa" | "entrata" | "movimento_fondo",
+    descrizione: string,
+    importoStimato: number,
+    categoria: string,
+    nota?: string,
+    frequenza: "mensile" | "bimestrale" | "annuale",
+    giornoMese?: number,
+    giornoAnno?: number,
+    meseAnno?: number,
+    prossimaScadenza: "YYYY-MM-DD",
+    attivo: boolean,
+    userId: string,
+    createdAt: timestamp,
+    updatedAt: timestamp
+  }
+  ```
+- **reminders**
+  ```
+  {
+    titolo: string,
+    descrizione?: string,
+    dataScadenza: "YYYY-MM-DD",
+    importoStimato?: number,
+    completato: boolean,
+    dataCompletamento?: timestamp,
+    createdAt: timestamp,
+    updatedAt?: timestamp
+  }
+  ```
+- **admin_users** (supporto locale per il pannello admin)
+  ```
+  {
+    email: string,
+    password: string,
+    createdBy: string,
+    createdAt: timestamp
+  }
+  ```
 
-## ✨ Fix iOS implementati
+## PWA e notifiche
+- `firebase-config.js` registra il service worker e imposta la persistenza auth per Safari.
+- `sw.js` applica una strategia network-first: le risposte valide vengono memorizzate in cache e sono riutilizzate offline.
+- Le notifiche vengono richieste solo quando l'API `Notification` e disponibile; Safari iOS potrebbe ignorarle, sono gia presenti log diagnostici.
 
-- Persistenza auth configurata per Safari
-- Service Worker con gestione errori iOS
-- Debug logging per troubleshooting
-
-## 💡 Logica Accumuli
-
-Gli **accumuli sono neutrali nel cash flow**:
-- Se guadagni 2000€ → puoi registrare 1500€ come entrate e 500€ come accumuli
-- Cash Flow = Entrate - Spese (accumuli NON sottratti)
-- Tasso di Risparmio = Accumuli / Entrate × 100
-
-Esempio:
-- Entrate: 2000€
-- Spese: 1500€
-- Accumuli: 300€
-- Cash Flow: 2000 - 1500 = **500€** (positivo!)
-- Tasso Risparmio: 300/2000 = **15%**
-
-## 📝 Note Tecniche
-
-- **Framework**: React 18 (inline con Babel)
-- **Backend**: Firebase (Auth + Firestore)
-- **Styling**: Tailwind CSS
-- **Grafici**: Chart.js
-- **PWA**: Manifest + Service Worker
-
-## 🔄 Changelog
-
-### v3.0.0 (Attuale)
-- Aggiunta gestione Entrate e Accumuli
-- Sistema categorie flessibili
-- Analytics potenziate con metriche finanziarie
-- Template ricorrenti per tutti i tipi
-- UI aggiornata con colori distintivi
-
-### v2.0.0
-- Refactoring codice organizzato
-- Fix iOS/Safari
-- Template ricorrenti
-- Analytics base
-
-### v1.0.0
-- Gestione spese base
-- Categorie
-- Reminder
-
-## 🎨 Codici Colore
-
-- 🔴 **Rosso**: Spese (€ in negativo)
-- 🟢 **Verde**: Entrate (€ in positivo)
-- 🔵 **Blu**: Accumuli (€ neutrali)
-- 🟣 **Viola**: Cash Flow
-
-## 🛡️ Sicurezza
-
-- Autenticazione Firebase
-- Multi-utente con condivisione dati famiglia
-- Admin panel per gestione utenti
+## Limitazioni e note operative
+- La collezione `admin_users` memorizza le password in chiaro a scopo familiare: ripulirla periodicamente e non utilizzarla in ambienti esterni.
+- I modali segnati come legacy restano per compatibilita con dati storici; la UI corrente usa le versioni in `js/modals`.
+- L'app dipende da CDN pubblici; per un deploy completamente offline considerare un processo di build dedicato.
+- Evitare di alterare l'ordine degli script in `index.html`: i componenti React sono caricati nel global scope.

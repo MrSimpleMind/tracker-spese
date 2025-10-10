@@ -36,9 +36,10 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
     };
 
     const tipoConfig = {
-        spesa: { label: 'Spese', icon: '💸', bgColor: 'bg-red-50', textColor: 'text-red-700', borderColor: 'border-red-200' },
-        entrata: { label: 'Entrate', icon: '💰', bgColor: 'bg-green-50', textColor: 'text-green-700', borderColor: 'border-green-200' },
-        accumulo: { label: 'Accumuli', icon: '🏦', bgColor: 'bg-blue-50', textColor: 'text-blue-700', borderColor: 'border-blue-200' }
+        spesa: { label: 'Spese', bgColor: 'bg-red-50', textColor: 'text-red-700', borderColor: 'border-red-200' },
+        entrata: { label: 'Entrate', bgColor: 'bg-green-50', textColor: 'text-green-700', borderColor: 'border-green-200' },
+        accumulo: { label: 'Accumuli', bgColor: 'bg-blue-50', textColor: 'text-blue-700', borderColor: 'border-blue-200' },
+        movimento_fondo: { label: 'Movimenti Fondo', bgColor: 'bg-blue-50', textColor: 'text-blue-700', borderColor: 'border-blue-200' }
     };
 
     return (
@@ -46,9 +47,14 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
             {/* Header */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900">📁 Categorie</h2>
-                        <p className="text-sm text-gray-600 mt-0.5">Organizza le tue transazioni</p>
+                    <div className="flex items-center gap-2">
+                        <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                        </svg>
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-900">Categorie</h2>
+                            <p className="text-sm text-gray-600 mt-0.5">Organizza le tue transazioni</p>
+                        </div>
                     </div>
                     <div className="text-right">
                         <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Totale</p>
@@ -62,7 +68,9 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
                 onClick={() => setShowAddCategoria(true)}
                 className="w-full bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-600 shadow-sm mb-4 flex items-center justify-center gap-2"
             >
-                <span className="text-xl">➕</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
                 <span>Nuova Categoria</span>
             </button>
 
@@ -70,7 +78,9 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
             <div className="space-y-2">
                 {categorieNormaliAttive.length === 0 ? (
                     <div className="text-center py-12 text-gray-400 bg-white rounded-lg border border-gray-200">
-                        <p className="text-4xl mb-2">📁</p>
+                        <svg className="w-16 h-16 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                        </svg>
                         <p className="font-medium">Nessuna categoria creata</p>
                         <p className="text-sm mt-1">Crea la prima categoria per iniziare</p>
                     </div>
@@ -96,11 +106,10 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
                                                     const config = tipoConfig[tipo];
                                                     return (
                                                         <span 
-                                                            key={tipo}
-                                                            className={`text-xs px-2 py-0.5 rounded ${config.bgColor} ${config.textColor} border ${config.borderColor} flex items-center gap-1`}
+                                                        key={tipo}
+                                                        className={`text-xs px-2 py-0.5 rounded ${config.bgColor} ${config.textColor} border ${config.borderColor}`}
                                                         >
-                                                            <span className="text-xs">{config.icon}</span>
-                                                            <span>{config.label}</span>
+                                                        {config.label}
                                                         </span>
                                                     );
                                                 })}
@@ -153,7 +162,9 @@ function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editi
                         className="w-full bg-white border border-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-50 flex items-center justify-between px-4 shadow-sm"
                     >
                         <span className="flex items-center gap-2">
-                            <span>📦</span>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                            </svg>
                             <span>Categorie Archiviate ({categorieNormaliArchiviate.length})</span>
                         </span>
                         <svg className={`w-4 h-4 transition-transform ${showArchiviati ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
