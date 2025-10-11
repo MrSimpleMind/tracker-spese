@@ -4,11 +4,28 @@ function AddSpesaModal({ onClose, categorie, fromTemplate = null }) {
     const [categoria, setCategoria] = React.useState(fromTemplate?.categoria || '');
     const [data, setData] = React.useState(fromTemplate?.prossimaScadenza || new Date().toISOString().split('T')[0]);
     const [nota, setNota] = React.useState(fromTemplate?.nota || '');
+    const [contoId, setContoId] = React.useState(fromTemplate?.contoId || '');
     const [loading, setLoading] = React.useState(false);
     const [templateId] = React.useState(fromTemplate?.id || null);
+    const [conti, setConti] = React.useState([]);
 
     // Filtra solo categorie normali (non accumuli archiviati)
     const categorieDisponibili = categorie.filter(cat => !cat.isAccumulo || !cat.archiviato);
+
+    // Carica conti
+    React.useEffect(() => {
+        const unsubscribe = db.collection('conti')
+            .where('userId', '==', auth.currentUser.uid)
+            .orderBy('nome')
+            .onSnapshot(snapshot => {
+                const contiData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setConti(contiData);
+            });
+        return () => unsubscribe();
+    }, []);
 
     const calcolaProssimaScadenza = () => {
         if (!fromTemplate) return null;
@@ -40,6 +57,7 @@ function AddSpesaModal({ onClose, categorie, fromTemplate = null }) {
                 categoria,
                 data,
                 nota,
+                contoId: contoId || null,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 userId: auth.currentUser.uid
             };
@@ -134,6 +152,22 @@ function AddSpesaModal({ onClose, categorie, fromTemplate = null }) {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Conto</label>
+                        <select
+                            value={contoId}
+                            onChange={(e) => setContoId(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="">Nessun conto</option>
+                            {conti.map(conto => (
+                                <option key={conto.id} value={conto.id}>
+                                    {conto.nome} ({conto.saldo?.toFixed(2) || '0.00'}€)
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div>
