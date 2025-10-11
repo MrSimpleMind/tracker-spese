@@ -59,6 +59,49 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         setMeseSelezionato(new Date(meseSelezionato.getFullYear(), meseSelezionato.getMonth() + 1, 1));
     };
 
+    // Calcola saldi totali dei conti e fondi fino alla fine del mese selezionato
+    const calcolaSaldiTotali = React.useMemo(() => {
+        const fineDelMese = new Date(meseSelezionato.getFullYear(), meseSelezionato.getMonth() + 1, 0, 23, 59, 59);
+        
+        // Filtra transazioni fino alla fine del mese
+        const transazioniFinoAMese = transactions.filter(t => new Date(t.data) <= fineDelMese);
+        
+        // Calcola saldo per ogni conto
+        const conti = categorie.filter(c => c.tipoContenitore === 'conto' && !c.archiviato);
+        let totaleConti = 0;
+        
+        conti.forEach(conto => {
+            const transazioniConto = transazioniFinoAMese.filter(t => t.contoId === conto.id);
+            const saldoConto = transazioniConto.reduce((acc, t) => {
+                if (t.tipo === 'entrata') return acc + parseFloat(t.importo);
+                if (t.tipo === 'spesa') return acc - parseFloat(t.importo);
+                return acc;
+            }, 0);
+            totaleConti += saldoConto;
+        });
+        
+        // Calcola saldo per ogni fondo
+        const fondi = categorie.filter(c => (c.isAccumulo || c.tipoContenitore === 'fondo') && !c.archiviato);
+        let totaleFondi = 0;
+        
+        fondi.forEach(fondo => {
+            const transazioniFondo = transazioniFinoAMese.filter(t => 
+                (t.fondoId === fondo.id) || 
+                (t.tipo === 'accumulo' && t.nomeAccumulo === fondo.nome) ||
+                (t.tipo === 'movimento_fondo' && t.categoria === fondo.nome)
+            );
+            const saldoFondo = transazioniFondo.reduce((acc, t) => {
+                const tipoMov = t.tipoMovimentoFondo || t.tipoOperazioneAccumulo;
+                if (tipoMov === 'versamento') return acc + parseFloat(t.importo);
+                if (tipoMov === 'prelievo') return acc - parseFloat(t.importo);
+                return acc;
+            }, 0);
+            totaleFondi += saldoFondo;
+        });
+        
+        return { conti: totaleConti, fondi: totaleFondi };
+    }, [transactions, categorie, meseSelezionato]);
+
     const nomiMesi = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 
                       'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
 
@@ -104,7 +147,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
             {/* Header con selettore mese e filtri */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-4">
                 {/* Navigatore mese */}
-                <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <div className="flex items-center justify-between py-3 px-4 border-b border-gray-100">
                     <button 
                         onClick={mesePrecedente}
                         className="text-gray-600 hover:text-gray-900 p-2"
@@ -129,7 +172,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 </div>
 
                 {/* Statistiche mese */}
-                <div className="p-4">
+                <div className="px-4 py-3">
                     <div className="grid grid-cols-3 gap-3 text-center mb-3">
                         <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Spese</p>
@@ -153,8 +196,27 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                         </div>
                     </div>
 
+                    {/* Saldi totali a fine mese */}
+                    <div className="pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-center gap-4 text-xs">
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">💳 Conti:</span>
+                                <span className={`font-bold ${calcolaSaldiTotali.conti >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {formatMoney(calcolaSaldiTotali.conti)}
+                                </span>
+                            </div>
+                            <span className="text-gray-300">|</span>
+                            <div className="flex items-center gap-1.5">
+                                <span className="text-gray-500">🏦 Fondi:</span>
+                                <span className={`font-bold ${calcolaSaldiTotali.fondi >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {formatMoney(calcolaSaldiTotali.fondi)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Pulsanti grafico e filtri */}
-                    <div className="flex items-center justify-center gap-4 pt-2 border-t border-gray-100">
+                    <div className="flex items-center justify-center gap-4 pt-2 border-t border-gray-100 mt-2">
                         <button
                             onClick={() => setShowGrafico(true)}
                             className="flex items-center gap-1.5 py-2 text-sm text-gray-600 hover:text-gray-700 font-medium"
@@ -187,7 +249,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                         setTemplateToInsert(null);
                         setShowAddTransaction(true);
                     }}
-                    className="bg-blue-500 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-blue-600 shadow flex items-center justify-center gap-2"
+                    className="bg-blue-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-600 shadow flex items-center justify-center gap-2"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -196,7 +258,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                 </button>
                 <button
                     onClick={() => setShowTemplateModal(true)}
-                    className="bg-gray-600 text-white py-2.5 px-4 rounded-lg font-medium hover:bg-gray-700 shadow flex items-center justify-center gap-2"
+                    className="bg-gray-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-gray-700 shadow flex items-center justify-center gap-2"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
