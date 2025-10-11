@@ -1,9 +1,19 @@
 function CategorieView({ categorie, showAddCategoria, setShowAddCategoria, editingCategoria, setEditingCategoria }) {
     const [showArchiviati, setShowArchiviati] = React.useState(false);
     
-    // Filtra categorie normali (non accumuli) attive e archiviate
-    const categorieNormaliAttive = categorie.filter(cat => !cat.isAccumulo && !cat.archiviato);
-    const categorieNormaliArchiviate = categorie.filter(cat => !cat.isAccumulo && cat.archiviato);
+    // Filtra categorie normali (non accumuli, non conti, non fondi) attive e archiviate
+    const categorieNormaliAttive = categorie.filter(cat => 
+        !cat.isAccumulo && 
+        cat.tipoContenitore !== 'conto' && 
+        cat.tipoContenitore !== 'fondo' && 
+        !cat.archiviato
+    );
+    const categorieNormaliArchiviate = categorie.filter(cat => 
+        !cat.isAccumulo && 
+        cat.tipoContenitore !== 'conto' && 
+        cat.tipoContenitore !== 'fondo' && 
+        cat.archiviato
+    );
     
     const eliminaCategoria = async (id) => {
         if (confirm('Vuoi eliminare questa categoria? Le transazioni associate rimarranno ma dovrai riassegnarle.')) {
