@@ -9,28 +9,14 @@ function EditTemplateModal({ template, onClose, categorie }) {
     const [giornoAnno, setGiornoAnno] = React.useState(template.giornoAnno || 1);
     const [meseAnno, setMeseAnno] = React.useState(template.meseAnno || 1);
     const [contoId, setContoId] = React.useState(template.contoId || '');
-    const [conti, setConti] = React.useState([]);
     const [loading, setLoading] = React.useState(false);
 
-    // Carica i conti disponibili
-    React.useEffect(() => {
-        const loadConti = async () => {
-            try {
-                const snapshot = await db.collection('conti')
-                    .where('userId', '==', auth.currentUser.uid)
-                    .get();
-                
-                const contiData = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setConti(contiData);
-            } catch (err) {
-                console.error('Errore caricamento conti:', err);
-            }
-        };
-        loadConti();
-    }, []);
+    // Filtra i conti dalle categorie (come nelle altre modali)
+    const conti = React.useMemo(() => {
+        return categorie.filter(cat => 
+            cat.tipoContenitore === 'conto' && !cat.archiviato
+        );
+    }, [categorie]);
 
     // Filtra categorie in base al tipo selezionato
     const categorieDisponibili = categorie.filter(cat => 
@@ -222,7 +208,7 @@ function EditTemplateModal({ template, onClose, categorie }) {
                             <option value="">Seleziona conto</option>
                             {conti.map(conto => (
                                 <option key={conto.id} value={conto.id}>
-                                    {conto.nome} - {(conto.saldo || 0).toFixed(2)}€
+                                    {conto.emoji && `${conto.emoji} `}{conto.nome}
                                 </option>
                             ))}
                         </select>
