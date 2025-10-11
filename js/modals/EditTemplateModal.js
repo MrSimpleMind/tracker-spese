@@ -222,7 +222,7 @@ function EditTemplateModal({ template, onClose, categorie }) {
                             <option value="">Seleziona conto</option>
                             {conti.map(conto => (
                                 <option key={conto.id} value={conto.id}>
-                                    {conto.nome} - {conto.saldo.toFixed(2)}€
+                                    {conto.nome} - {(conto.saldo || 0).toFixed(2)}€
                                 </option>
                             ))}
                         </select>
