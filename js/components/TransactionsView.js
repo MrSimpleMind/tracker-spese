@@ -231,20 +231,28 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                 <div className="flex items-center justify-between gap-3">
                                     {/* Info transazione */}
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 font-medium whitespace-nowrap flex items-center gap-1`}>
+                                        {/* Descrizione come titolo principale */}
+                                        <p className="text-base font-bold text-gray-900 truncate mb-1">
+                                            {transaction.descrizione || transaction.categoria}
+                                        </p>
+                                        
+                                        {/* Metadati secondari */}
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {/* Categoria */}
+                                            <span className="text-xs text-gray-600 flex items-center gap-1">
                                                 <span>{config.icon}</span>
-                                                <span className="hidden sm:inline">{config.label}</span>
+                                                <span>{transaction.categoria}</span>
                                             </span>
+                                            
+                                            {/* Badge movimento fondo */}
                                             {movimentoBadge && (
-                                                <span className="text-xs text-gray-500 whitespace-nowrap">
+                                                <span className="text-xs text-gray-500">
                                                     {movimentoBadge.icon} {movimentoBadge.label}
                                                 </span>
                                             )}
                                         </div>
-                                        <p className="text-sm font-medium text-gray-900 truncate">
-                                            {transaction.categoria}
-                                        </p>
+                                        
+                                        {/* Conto */}
                                         {transaction.contoId && (() => {
                                             const conto = categorie.find(c => c.id === transaction.contoId);
                                             return conto ? (
@@ -259,7 +267,9 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
                                                 🔍 Conto non assegnato
                                             </p>
                                         )}
-                                        <p className="text-xs text-gray-500">
+                                        
+                                        {/* Data */}
+                                        <p className="text-xs text-gray-500 mt-0.5">
                                             {new Date(transaction.data).toLocaleDateString('it-IT')}
                                         </p>
                                     </div>
