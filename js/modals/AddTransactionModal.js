@@ -15,8 +15,8 @@ function AddTransactionModal({ onClose, categorie, fromTemplate = null }) {
     const [fondoA, setFondoA] = React.useState(''); // per trasferimenti
     
     // Stati per Conti
-    const [contoId, setContoId] = React.useState(''); // Conto per spese/entrate
-    const [contoAssociatoId, setContoAssociatoId] = React.useState(''); // Conto associato per movimenti fondo
+    const [contoId, setContoId] = React.useState(fromTemplate?.contoId || ''); // Conto per spese/entrate
+    const [contoAssociatoId, setContoAssociatoId] = React.useState(fromTemplate?.contoId || ''); // Conto associato per movimenti fondo
 
     // Filtra i fondi (categorie con isAccumulo=true o tipoContenitore='fondo')
     const fondi = categorie.filter(cat => 

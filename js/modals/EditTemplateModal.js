@@ -8,7 +8,29 @@ function EditTemplateModal({ template, onClose, categorie }) {
     const [giornoMese, setGiornoMese] = React.useState(template.giornoMese || 1);
     const [giornoAnno, setGiornoAnno] = React.useState(template.giornoAnno || 1);
     const [meseAnno, setMeseAnno] = React.useState(template.meseAnno || 1);
+    const [contoId, setContoId] = React.useState(template.contoId || '');
+    const [conti, setConti] = React.useState([]);
     const [loading, setLoading] = React.useState(false);
+
+    // Carica i conti disponibili
+    React.useEffect(() => {
+        const loadConti = async () => {
+            try {
+                const snapshot = await db.collection('conti')
+                    .where('userId', '==', auth.currentUser.uid)
+                    .get();
+                
+                const contiData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setConti(contiData);
+            } catch (err) {
+                console.error('Errore caricamento conti:', err);
+            }
+        };
+        loadConti();
+    }, []);
 
     // Filtra categorie in base al tipo selezionato
     const categorieDisponibili = categorie.filter(cat => 
@@ -72,6 +94,7 @@ function EditTemplateModal({ template, onClose, categorie }) {
                 descrizione,
                 importoStimato: parseFloat(importoStimato),
                 categoria,
+                contoId: contoId || null,
                 nota,
                 frequenza,
                 prossimaScadenza,
@@ -184,6 +207,28 @@ function EditTemplateModal({ template, onClose, categorie }) {
                         {categorieDisponibili.length === 0 && (
                             <p className="text-xs text-orange-600 mt-1">
                                 ⚠️ Nessuna categoria disponibile per questo tipo
+                            </p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Conto *</label>
+                        <select
+                            value={contoId}
+                            onChange={(e) => setContoId(e.target.value)}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            required
+                        >
+                            <option value="">Seleziona conto</option>
+                            {conti.map(conto => (
+                                <option key={conto.id} value={conto.id}>
+                                    {conto.nome} - {conto.saldo.toFixed(2)}€
+                                </option>
+                            ))}
+                        </select>
+                        {conti.length === 0 && (
+                            <p className="text-xs text-orange-600 mt-1">
+                                ⚠️ Nessun conto disponibile. Creane uno nella sezione Conti!
                             </p>
                         )}
                     </div>
