@@ -13,6 +13,14 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
     const transactionsFiltrate = React.useMemo(() => {
         let filtrate = transactions;
         
+        // Filtro per mese selezionato
+        const meseCorrente = meseSelezionato.getMonth();
+        const annoCorrente = meseSelezionato.getFullYear();
+        filtrate = filtrate.filter(t => {
+            const dataTransaction = new Date(t.data);
+            return dataTransaction.getMonth() === meseCorrente && dataTransaction.getFullYear() === annoCorrente;
+        });
+        
         // Filtro tipo (selezione multipla)
         if (filtroTipo && filtroTipo.length > 0) {
             filtrate = filtrate.filter(t => filtroTipo.includes(t.tipo));
@@ -24,7 +32,7 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
         }
         
         return filtrate;
-    }, [transactions, filtroTipo, filtroCategoria]);
+    }, [transactions, filtroTipo, filtroCategoria, meseSelezionato]);
 
     // Ordina le transazioni filtrate
     const transactionsOrdinate = [...transactionsFiltrate].sort((a, b) => {
