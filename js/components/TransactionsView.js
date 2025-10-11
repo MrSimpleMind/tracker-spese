@@ -198,16 +198,16 @@ function TransactionsView({ transactions, categorie, filtroTipo, setFiltroTipo, 
 
                     {/* Saldi totali a fine mese */}
                     <div className="pt-2 border-t border-gray-100">
-                        <div className="flex items-center justify-center gap-4 text-xs">
+                        <div className="flex items-center justify-center gap-4 text-sm">
                             <div className="flex items-center gap-1.5">
-                                <span className="text-gray-500">💳 Conti:</span>
+                                <span className="text-gray-500">Conti:</span>
                                 <span className={`font-bold ${calcolaSaldiTotali.conti >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                     {formatMoney(calcolaSaldiTotali.conti)}
                                 </span>
                             </div>
                             <span className="text-gray-300">|</span>
                             <div className="flex items-center gap-1.5">
-                                <span className="text-gray-500">🏦 Fondi:</span>
+                                <span className="text-gray-500">Fondi:</span>
                                 <span className={`font-bold ${calcolaSaldiTotali.fondi >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
                                     {formatMoney(calcolaSaldiTotali.fondi)}
                                 </span>
