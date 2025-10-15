@@ -45,14 +45,20 @@ function App() {
         if (!user) return;
         
         const unsubscribe = db.collection('categorie')
-            .where('tipoContenitore', '==', null)
             .orderBy('nome')
             .onSnapshot(snapshot => {
                 const categorieData = snapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
-                setCategorie(categorieData.filter(c => !c.tipoContenitore && !c.isAccumulo));
+                // Filtra SOLO nel codice per prendere tutte le categorie normali
+                // (non conti, non fondi, non accumuli)
+                const categorieNormali = categorieData.filter(c => 
+                    !c.isAccumulo && 
+                    c.tipoContenitore !== 'conto' && 
+                    c.tipoContenitore !== 'fondo'
+                );
+                setCategorie(categorieNormali);
             });
         
         return unsubscribe;
