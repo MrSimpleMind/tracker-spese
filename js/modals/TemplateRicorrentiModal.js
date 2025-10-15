@@ -5,10 +5,11 @@ function TemplateRicorrentiModal({ onClose, categorie, onInsertFromTemplate }) {
     const [editingTemplate, setEditingTemplate] = React.useState(null);
     const [showDettaglio, setShowDettaglio] = React.useState(null);
 
-    // Carica templates
+    // Carica templates (solo spese nella versione lite)
     React.useEffect(() => {
         const unsubscribe = db.collection('template_ricorrenti')
             .where('userId', '==', auth.currentUser.uid)
+            .where('tipo', '==', 'spesa')
             .onSnapshot(
                 snapshot => {
                     const templatesData = snapshot.docs.map(doc => ({
@@ -67,15 +68,15 @@ function TemplateRicorrentiModal({ onClose, categorie, onInsertFromTemplate }) {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50">
             <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                 <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
-                    <h2 className="text-xl font-bold">⚙️ Template Ricorrenti</h2>
+                    <h2 className="text-xl font-bold">🔁 Spese Ricorrenti</h2>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
                 </div>
 
                 <div className="p-4">
                     <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
                         <p className="text-sm text-blue-900">
-                            💡 I template sono "ricette" per creare spese ricorrenti. Quando scade un template, 
-                            potrai inserire velocemente la spesa nella sezione Spese.
+                            💡 Le spese ricorrenti sono spese che si ripetono periodicamente (es: affitto, abbonamenti). 
+                            Riceverai un promemoria quando è il momento di inserirle.
                         </p>
                     </div>
 
@@ -83,7 +84,7 @@ function TemplateRicorrentiModal({ onClose, categorie, onInsertFromTemplate }) {
                         onClick={() => setShowAddTemplate(true)}
                         className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 mb-4 shadow"
                     >
-                        ➕ Nuovo Template
+                        ➕ Nuova Spesa Ricorrente
                     </button>
 
                     {/* Templates Attivi */}

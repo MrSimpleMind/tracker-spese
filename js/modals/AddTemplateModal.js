@@ -1,5 +1,4 @@
 function AddTemplateModal({ onClose, categorie }) {
-    const [tipo, setTipo] = React.useState('spesa');
     const [descrizione, setDescrizione] = React.useState('');
     const [importoStimato, setImportoStimato] = React.useState('');
     const [categoria, setCategoria] = React.useState('');
@@ -10,27 +9,14 @@ function AddTemplateModal({ onClose, categorie }) {
     const [meseAnno, setMeseAnno] = React.useState(1);
     const [primaScadenzaManuale, setPrimaScadenzaManuale] = React.useState('');
     const [usaPrimaScadenzaManuale, setUsaPrimaScadenzaManuale] = React.useState(false);
-    const [contoId, setContoId] = React.useState('');
     const [loading, setLoading] = React.useState(false);
 
-    // Filtra i conti dalle categorie (come nelle altre modali)
-    const conti = React.useMemo(() => {
-        return categorie.filter(cat => 
-            cat.tipoContenitore === 'conto' && !cat.archiviato
-        );
-    }, [categorie]);
-
-    // Filtra categorie in base al tipo selezionato
+    // Filtra categorie attive (non archiviate e non fondi/conti)
     const categorieDisponibili = categorie.filter(cat => 
-        cat.applicabileA && cat.applicabileA.includes(tipo)
+        !cat.archiviato && 
+        !cat.tipoContenitore && 
+        !cat.isAccumulo
     );
-
-    // Se cambio tipo e la categoria attuale non è valida, resetta
-    React.useEffect(() => {
-        if (categoria && !categorieDisponibili.find(c => c.nome === categoria)) {
-            setCategoria('');
-        }
-    }, [tipo, categoria, categorieDisponibili]);
 
     const calcolaProssimaScadenza = () => {
         const oggi = new Date();
@@ -42,6 +28,7 @@ function AddTemplateModal({ onClose, categorie }) {
                 prossimaData = new Date(oggi.getFullYear(), oggi.getMonth() + 1, giornoMese);
             }
             
+            // Gestisci giorni non validi (es: 31 in febbraio)
             if (prossimaData.getDate() !== parseInt(giornoMese)) {
                 prossimaData = new Date(prossimaData.getFullYear(), prossimaData.getMonth() + 1, 0);
             }
@@ -60,6 +47,7 @@ function AddTemplateModal({ onClose, categorie }) {
             
             return prossimaData.toISOString().split('T')[0];
         } else {
+            // Annuale
             let prossimaData = new Date(oggi.getFullYear(), meseAnno - 1, giornoAnno);
             
             if (prossimaData < oggi) {
@@ -80,11 +68,10 @@ function AddTemplateModal({ onClose, categorie }) {
                 : calcolaProssimaScadenza();
             
             const templateData = {
-                tipo,
+                tipo: 'spesa',
                 descrizione,
                 importoStimato: parseFloat(importoStimato),
                 categoria,
-                contoId: contoId || null,
                 nota,
                 frequenza,
                 attivo: true,
@@ -94,6 +81,7 @@ function AddTemplateModal({ onClose, categorie }) {
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             };
 
+            // Aggiungi campi specifici per frequenza
             if (frequenza === 'mensile' || frequenza === 'bimestrale') {
                 templateData.giornoMese = parseInt(giornoMese);
             } else {
@@ -115,42 +103,18 @@ function AddTemplateModal({ onClose, categorie }) {
         'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
     ];
 
-    const tipoConfig = {
-        spesa: { label: 'Spesa', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-500' },
-        entrata: { label: 'Entrata', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-500' },
-        movimento_fondo: { label: 'Movimento Fondo', color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-500' }
-    };
-
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60]">
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-[60]" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
-                    <h2 className="text-xl font-bold">Nuovo Template</h2>
-                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+                    <div>
+                        <h2 className="text-xl font-bold">🔁 Nuova Spesa Ricorrente</h2>
+                        <p className="text-xs text-gray-500 mt-1">Riceverai un promemoria alla scadenza</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl" type="button">×</button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-4 space-y-4">
-                    {/* Selezione Tipo */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Tipo *</label>
-                        <div className="grid grid-cols-3 gap-2">
-                            {Object.entries(tipoConfig).map(([key, conf]) => (
-                                <button
-                                    key={key}
-                                    type="button"
-                                    onClick={() => setTipo(key)}
-                                    className={`py-3 px-4 rounded-lg text-sm font-medium border-2 transition ${
-                                        tipo === key 
-                                            ? `${conf.borderColor} ${conf.bgColor} ${conf.color}` 
-                                            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                                    }`}
-                                >
-                                    {conf.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione *</label>
                         <input
@@ -159,11 +123,7 @@ function AddTemplateModal({ onClose, categorie }) {
                             onChange={(e) => setDescrizione(e.target.value)}
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                             required
-                            placeholder={
-                                tipo === 'spesa' ? 'Es: Affitto, Netflix...' :
-                                tipo === 'entrata' ? 'Es: Stipendio, Freelance...' :
-                                'Es: Fondo emergenza, Risparmio...'
-                            }
+                            placeholder="Es: Affitto, Netflix, Abbonamento palestra..."
                         />
                     </div>
 
@@ -178,7 +138,7 @@ function AddTemplateModal({ onClose, categorie }) {
                             required
                             placeholder="0.00"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Potrai modificarlo quando inserisci la transazione</p>
+                        <p className="text-xs text-gray-500 mt-1">Potrai modificarlo quando inserisci la spesa</p>
                     </div>
 
                     <div>
@@ -192,65 +152,57 @@ function AddTemplateModal({ onClose, categorie }) {
                             <option value="">Seleziona categoria</option>
                             {categorieDisponibili.map(cat => (
                                 <option key={cat.id} value={cat.nome}>
-                                    {cat.nome}
+                                    {cat.emoji && `${cat.emoji} `}{cat.nome}
                                 </option>
                             ))}
                         </select>
                         {categorieDisponibili.length === 0 && (
                             <p className="text-xs text-orange-600 mt-1">
-                                ⚠️ Nessuna categoria disponibile per questo tipo. Creane una nella sezione Categorie!
+                                ⚠️ Nessuna categoria disponibile. Creane una nella sezione Categorie!
                             </p>
                         )}
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Conto *</label>
-                        <select
-                            value={contoId}
-                            onChange={(e) => setContoId(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            required
-                        >
-                            <option value="">Seleziona conto</option>
-                            {conti.map(conto => (
-                                <option key={conto.id} value={conto.id}>
-                                    {conto.emoji && `${conto.emoji} `}{conto.nome}
-                                </option>
-                            ))}
-                        </select>
-                        {conti.length === 0 && (
-                            <p className="text-xs text-orange-600 mt-1">
-                                ⚠️ Nessun conto disponibile. Creane uno nella sezione Conti!
-                            </p>
-                        )}
-                    </div>
-
+                    {/* RICORRENZA */}
                     <div className="border-t pt-4">
                         <label className="block text-sm font-medium text-gray-700 mb-2">🔄 Frequenza *</label>
                         <div className="grid grid-cols-3 gap-2 mb-4">
                             <button
                                 type="button"
                                 onClick={() => setFrequenza('mensile')}
-                                className={`py-2 px-4 rounded-lg text-sm font-medium ${frequenza === 'mensile' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                                className={`py-2 px-4 rounded-lg text-sm font-medium transition ${
+                                    frequenza === 'mensile' 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
                             >
                                 📅 Mensile
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setFrequenza('bimestrale')}
-                                className={`py-2 px-4 rounded-lg text-sm font-medium ${frequenza === 'bimestrale' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                                className={`py-2 px-4 rounded-lg text-sm font-medium transition ${
+                                    frequenza === 'bimestrale' 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
                             >
                                 📅 Bimestrale
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setFrequenza('annuale')}
-                                className={`py-2 px-4 rounded-lg text-sm font-medium ${frequenza === 'annuale' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+                                className={`py-2 px-4 rounded-lg text-sm font-medium transition ${
+                                    frequenza === 'annuale' 
+                                        ? 'bg-blue-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
                             >
                                 📅 Annuale
                             </button>
                         </div>
 
+                        {/* Mensile/Bimestrale: solo giorno del mese */}
                         {(frequenza === 'mensile' || frequenza === 'bimestrale') && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Giorno del mese *</label>
@@ -267,48 +219,59 @@ function AddTemplateModal({ onClose, categorie }) {
                                     ))}
                                 </select>
                                 {!usaPrimaScadenzaManuale && (
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT')}
+                                    <p className="text-xs text-blue-600 mt-2 font-medium">
+                                        💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT', { 
+                                            day: 'numeric', 
+                                            month: 'long', 
+                                            year: 'numeric' 
+                                        })}
                                     </p>
                                 )}
                             </div>
                         )}
 
+                        {/* Annuale: giorno e mese */}
                         {frequenza === 'annuale' && (
-                            <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Giorno *</label>
-                                    <select
-                                        value={giornoAnno}
-                                        onChange={(e) => setGiornoAnno(e.target.value)}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        required
-                                    >
-                                        {Array.from({ length: 31 }, (_, i) => i + 1).map(giorno => (
-                                            <option key={giorno} value={giorno}>
-                                                {giorno}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Mese *</label>
-                                    <select
-                                        value={meseAnno}
-                                        onChange={(e) => setMeseAnno(e.target.value)}
-                                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                                        required
-                                    >
-                                        {mesi.map((mese, index) => (
-                                            <option key={index + 1} value={index + 1}>
-                                                {mese}
-                                            </option>
-                                        ))}
-                                    </select>
+                            <div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Giorno *</label>
+                                        <select
+                                            value={giornoAnno}
+                                            onChange={(e) => setGiornoAnno(e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        >
+                                            {Array.from({ length: 31 }, (_, i) => i + 1).map(giorno => (
+                                                <option key={giorno} value={giorno}>
+                                                    {giorno}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Mese *</label>
+                                        <select
+                                            value={meseAnno}
+                                            onChange={(e) => setMeseAnno(e.target.value)}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                                            required
+                                        >
+                                            {mesi.map((mese, index) => (
+                                                <option key={index + 1} value={index + 1}>
+                                                    {mese}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                                 {!usaPrimaScadenzaManuale && (
-                                    <p className="text-xs text-gray-500 mt-1 col-span-2">
-                                        💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT')}
+                                    <p className="text-xs text-blue-600 mt-2 font-medium">
+                                        💡 Prossima scadenza: {new Date(calcolaProssimaScadenza()).toLocaleDateString('it-IT', { 
+                                            day: 'numeric', 
+                                            month: 'long', 
+                                            year: 'numeric' 
+                                        })}
                                     </p>
                                 )}
                             </div>
@@ -325,14 +288,13 @@ function AddTemplateModal({ onClose, categorie }) {
                                 onChange={(e) => setUsaPrimaScadenzaManuale(e.target.checked)}
                                 className="mr-2"
                             />
-                            <label htmlFor="usaPrimaScadenzaManuale" className="text-sm font-medium text-gray-700">
-                                👁️ Imposta prima scadenza manualmente (per test)
+                            <label htmlFor="usaPrimaScadenzaManuale" className="text-sm text-gray-600">
+                                🧪 Imposta prima scadenza manualmente (per test)
                             </label>
                         </div>
                         
                         {usaPrimaScadenzaManuale && (
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Prima scadenza *</label>
                                 <input
                                     type="date"
                                     value={primaScadenzaManuale}
@@ -341,7 +303,7 @@ function AddTemplateModal({ onClose, categorie }) {
                                     required={usaPrimaScadenzaManuale}
                                 />
                                 <p className="text-xs text-orange-600 mt-1">
-                                    ⚠️ Utile per testare: puoi impostare una data passata per vedere il banner di alert
+                                    ⚠️ Utile per testare: imposta una data passata per vedere subito il banner di promemoria
                                 </p>
                             </div>
                         )}
@@ -356,6 +318,12 @@ function AddTemplateModal({ onClose, categorie }) {
                             rows="2"
                             placeholder="Note aggiuntive..."
                         />
+                    </div>
+
+                    <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded">
+                        <p className="text-xs text-blue-900">
+                            💡 <strong>Come funziona?</strong> Riceverai un promemoria in alto nell'app quando sarà il momento di inserire questa spesa.
+                        </p>
                     </div>
 
                     <div className="flex gap-2 pt-2">
